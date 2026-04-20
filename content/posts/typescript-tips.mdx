@@ -1,0 +1,70 @@
+---
+title: "실무에서 자주 쓰는 TypeScript 패턴 5가지"
+date: "2026-04-10"
+description: "3년 간 실무에서 가장 자주 쓴 TypeScript 패턴을 정리했습니다. 제네릭, Utility Types, 타입 가드 등을 다룹니다."
+category: "typescript"
+---
+
+## 1. Utility Types 적극 활용
+
+```typescript
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  password: string;
+}
+
+// 일부 필드만 선택
+type UserProfile = Pick<User, 'id' | 'name' | 'email'>;
+
+// 모든 필드를 선택적으로
+type PartialUser = Partial<User>;
+
+// 특정 필드 제외
+type PublicUser = Omit<User, 'password'>;
+```
+
+## 2. 타입 가드 (Type Guard)
+
+```typescript
+function isString(value: unknown): value is string {
+  return typeof value === 'string';
+}
+
+function process(value: string | number) {
+  if (isString(value)) {
+    console.log(value.toUpperCase()); // string으로 좁혀짐
+  }
+}
+```
+
+## 3. 제네릭으로 재사용 가능한 함수
+
+```typescript
+async function fetchData<T>(url: string): Promise<T> {
+  const res = await fetch(url);
+  return res.json() as T;
+}
+
+const user = await fetchData<User>('/api/user/1');
+```
+
+## 4. as const로 리터럴 타입 고정
+
+```typescript
+const ROLES = ['admin', 'editor', 'viewer'] as const;
+type Role = typeof ROLES[number]; // 'admin' | 'editor' | 'viewer'
+```
+
+## 5. satisfies 연산자
+
+```typescript
+const config = {
+  port: 3000,
+  host: 'localhost',
+} satisfies Record<string, string | number>;
+// 타입 추론을 유지하면서 타입 체크
+```
+
+이 패턴들을 익혀두면 더 안전하고 읽기 좋은 코드를 짤 수 있습니다.

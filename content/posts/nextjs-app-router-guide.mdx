@@ -1,0 +1,47 @@
+---
+title: "Next.js App Router 핵심 정리"
+date: "2026-04-15"
+description: "Pages Router와 App Router의 차이점, Server Component와 Client Component를 언제 써야 하는지 정리했습니다."
+category: "next.js"
+---
+
+## App Router란?
+
+Next.js 13부터 도입된 **App Router**는 `app/` 디렉토리를 기반으로 동작합니다.
+기존 `pages/` 디렉토리 방식과 달리 React Server Components를 기본으로 사용합니다.
+
+## Server Component vs Client Component
+
+| 구분 | Server Component | Client Component |
+|------|-----------------|-----------------|
+| 렌더링 위치 | 서버 | 브라우저 |
+| 상태(useState) | ❌ | ✅ |
+| 이벤트 핸들러 | ❌ | ✅ |
+| 데이터 fetching | 직접 가능 | useEffect 필요 |
+
+### 언제 Client Component를 써야 할까?
+
+- `useState`, `useEffect` 등 훅을 사용할 때
+- 클릭, 입력 등 이벤트 핸들러가 필요할 때
+- 브라우저 전용 API를 사용할 때
+
+```tsx
+'use client'; // 파일 최상단에 선언
+
+import { useState } from 'react';
+
+export default function Counter() {
+  const [count, setCount] = useState(0);
+  return <button onClick={() => setCount(c => c + 1)}>{count}</button>;
+}
+```
+
+## 동적 라우트
+
+`[slug]` 형태의 폴더로 동적 라우트를 만들 수 있습니다.
+
+```
+app/blog/[slug]/page.tsx  →  /blog/hello-world
+```
+
+`generateStaticParams`로 빌드 시 미리 생성할 경로를 지정할 수 있습니다.
