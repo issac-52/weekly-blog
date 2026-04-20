@@ -12,7 +12,10 @@ export default async function EditPostPage({ params }: { params: Promise<{ slug:
 
   if (!post) notFound();
 
-  const boundAction = updatePostAction.bind(null, post.id);
+  async function boundAction(formData: FormData) {
+    'use server';
+    return updatePostAction(post.id, formData);
+  }
 
   return (
     <div>
