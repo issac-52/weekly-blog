@@ -8,7 +8,19 @@
       "Bash(npm run *)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/blog)",
-      "Bash(curl -s -o /dev/null -w \" %{http_code}\" http://localhost:3000/blog/hello-world)"
+      "Bash(curl -s -o /dev/null -w \" %{http_code}\" http://localhost:3000/blog/hello-world)",
+      "Bash(mkdir -p \"/f/booup-blog/app/\\(blog\\)/blog/[slug]\")",
+      "Bash(mkdir -p \"/f/booup-blog/app/admin/posts/[slug]/edit\")",
+      "Bash(mv \"/f/booup-blog/app/blog/[slug]/page.tsx\" \"/f/booup-blog/app/\\(blog\\)/blog/[slug]/page.tsx\")",
+      "Bash(rmdir \"/f/booup-blog/app/blog/[slug]\" \"/f/booup-blog/app/blog\")",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(curl -s -o /dev/null -w \"/ → %{http_code}\\\\n\" http://localhost:3000)",
+      "Bash(curl -s -o /dev/null -w \"/blog → %{http_code}\\\\n\" http://localhost:3000/blog)",
+      "Bash(curl -s -o /dev/null -w \"/admin/login → %{http_code}\\\\n\" http://localhost:3000/admin/login)",
+      "Bash(curl *)",
+      "Bash(node -e \"const p = require\\('./package.json'\\); console.log\\(JSON.stringify\\(p.dependencies, null, 2\\)\\)\")",
+      "Bash(node -e \"const m = require\\('./node_modules/@tiptap/extension-text-style/dist/index.js'\\); console.log\\(Object.keys\\(m\\)\\)\")",
+      "Bash(node -e \"const m = require\\('./node_modules/@tiptap/extension-color/dist/index.js'\\); console.log\\(Object.keys\\(m\\)\\)\")"
     ]
   }
 }

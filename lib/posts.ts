@@ -1,51 +1,61 @@
-import fs from 'fs';
-import path from 'path';
-import matter from 'gray-matter';
+import { createClient } from '@supabase/supabase-js';
 
-const postsDirectory = path.join(process.cwd(), 'content/posts');
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+}
 
 export interface Post {
+  id: string;
   slug: string;
   title: string;
   date: string;
   description: string;
   category: string;
   content: string;
+  published: boolean;
 }
 
 export type PostMeta = Omit<Post, 'content'>;
 
-export function getPosts(): PostMeta[] {
-  if (!fs.existsSync(postsDirectory)) return [];
+export async function getPosts(): Promise<PostMeta[]> {
+  const { data } = await getSupabase()
+    .from('posts')
+    .select('id, slug, title, description, category, published, created_at')
+    .eq('published', true)
+    .order('created_at', { ascending: false });
 
-  return fs
-    .readdirSync(postsDirectory)
-    .filter((name) => name.endsWith('.mdx'))
-    .map((fileName) => {
-      const slug = fileName.replace(/\.mdx$/, '');
-      const { data } = matter(fs.readFileSync(path.join(postsDirectory, fileName), 'utf8'));
-      return {
-        slug,
-        title: data.title ?? slug,
-        date: data.date ?? '',
-        description: data.description ?? '',
-        category: data.category ?? 'uncategorized',
-      };
-    })
-    .sort((a, b) => (a.date > b.date ? -1 : 1));
+  return (data ?? []).map((p) => ({
+    id: p.id,
+    slug: p.slug,
+    title: p.title,
+    date: String(p.created_at).split('T')[0],
+    description: p.description,
+    category: p.category,
+    published: p.published,
+  }));
 }
 
-export function getPost(slug: string): Post | null {
-  const fullPath = path.join(postsDirectory, `${slug}.mdx`);
-  if (!fs.existsSync(fullPath)) return null;
+export async function getPost(slug: string): Promise<Post | null> {
+  const { data } = await getSupabase()
+    .from('posts')
+    .select('*')
+    .eq('slug', slug)
+    .eq('published', true)
+    .single();
 
-  const { data, content } = matter(fs.readFileSync(fullPath, 'utf8'));
+  if (!data) return null;
+
   return {
-    slug,
-    title: data.title ?? slug,
-    date: data.date ?? '',
-    description: data.description ?? '',
-    category: data.category ?? 'uncategorized',
-    content,
+    id: data.id,
+    slug: data.slug,
+    title: data.title,
+    date: String(data.created_at).split('T')[0],
+    description: data.description,
+    category: data.category,
+    content: data.content,
+    published: data.published,
   };
 }

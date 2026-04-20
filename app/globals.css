@@ -1,7 +1,15 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* class 기반 dark mode */
+@variant dark (&:where(.dark, .dark *));
+
 :root {
+  --background: #ffffff;
+  --foreground: #18181b;
+}
+
+.dark {
   --background: #09090b;
   --foreground: #f4f4f5;
 }

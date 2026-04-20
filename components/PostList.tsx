@@ -16,10 +16,10 @@ export default function PostList({ posts }: { posts: PostMeta[] }) {
           <button
             key={cat}
             onClick={() => setActive(cat)}
-            className={`px-3 py-1 rounded-full text-sm font-mono transition-colors ${
+            className={`px-3 py-1 rounded-full text-sm transition-colors ${
               active === cat
-                ? 'bg-emerald-400 text-zinc-950'
-                : 'border border-zinc-700 text-zinc-400 hover:border-emerald-400 hover:text-emerald-400'
+                ? 'bg-emerald-500 dark:bg-emerald-400 text-white dark:text-zinc-950'
+                : 'border border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:border-emerald-500 dark:hover:border-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-400'
             }`}
           >
             {cat}
