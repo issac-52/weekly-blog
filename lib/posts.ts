@@ -18,12 +18,17 @@ export interface Post {
   published: boolean;
 }
 
-export type PostMeta = Omit<Post, 'content'>;
+export type PostMeta = Omit<Post, 'content'> & { thumbnail: string | null };
+
+function extractFirstImage(html: string): string | null {
+  const match = html.match(/<img[^>]+src=["']([^"']+)["']/i);
+  return match?.[1] ?? null;
+}
 
 export async function getPosts(): Promise<PostMeta[]> {
   const { data } = await getSupabase()
     .from('posts')
-    .select('id, slug, title, description, category, published, created_at')
+    .select('id, slug, title, description, category, published, created_at, content')
     .eq('published', true)
     .order('created_at', { ascending: false });
 
@@ -35,6 +40,7 @@ export async function getPosts(): Promise<PostMeta[]> {
     description: p.description,
     category: p.category,
     published: p.published,
+    thumbnail: extractFirstImage(p.content ?? ''),
   }));
 }
 
