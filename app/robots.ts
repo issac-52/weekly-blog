@@ -1,14 +1,14 @@
-import type { MetadataRoute } from 'next';
+import type { MetadataRoute } from "next";
 
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
       {
-        userAgent: '*',
-        allow: '/',
-        disallow: ['/admin/', '/admin/login'],
+        userAgent: "*",
+        allow: "/",
+        disallow: ["/admin/", "/admin/login"],
       },
     ],
-    sitemap: 'https://booup.dev/sitemap.xml',
+    sitemap: "https://infobrow.dev/sitemap.xml",
   };
 }

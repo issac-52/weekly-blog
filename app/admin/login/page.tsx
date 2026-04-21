@@ -1,16 +1,16 @@
-'use client';
-import { useState, useTransition } from 'react';
-import { loginAction } from '../_actions';
-import { Code2, Loader2 } from 'lucide-react';
+"use client";
+import { useState, useTransition } from "react";
+import { loginAction } from "../_actions";
+import { Code2, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    setError('');
+    setError("");
     startTransition(async () => {
       const result = await loginAction(formData);
       if (result?.error) setError(result.error);
@@ -22,7 +22,9 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="flex items-center gap-2 justify-center mb-8">
           <Code2 size={22} className="text-emerald-400" />
-          <span className="text-white font-semibold text-lg">booup.dev admin</span>
+          <span className="text-white font-semibold text-lg">
+            infobrow.dev admin
+          </span>
         </div>
 
         <form
@@ -30,7 +32,10 @@ export default function LoginPage() {
           className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4"
         >
           <div>
-            <label htmlFor="email" className="block text-xs text-zinc-400 mb-1.5">
+            <label
+              htmlFor="email"
+              className="block text-xs text-zinc-400 mb-1.5"
+            >
               이메일
             </label>
             <input
@@ -44,7 +49,10 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label htmlFor="password" className="block text-xs text-zinc-400 mb-1.5">
+            <label
+              htmlFor="password"
+              className="block text-xs text-zinc-400 mb-1.5"
+            >
               비밀번호
             </label>
             <input
