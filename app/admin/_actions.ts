@@ -20,7 +20,14 @@ export async function logoutAction() {
   redirect('/admin/login');
 }
 
+async function requireAuth() {
+  const supabase = await createServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Unauthorized');
+}
+
 export async function createPostAction(formData: FormData) {
+  await requireAuth();
   const admin = createAdminClient();
   const { error } = await admin.from('posts').insert({
     slug: formData.get('slug'),
@@ -37,6 +44,7 @@ export async function createPostAction(formData: FormData) {
 }
 
 export async function updatePostAction(id: string, formData: FormData) {
+  await requireAuth();
   const admin = createAdminClient();
   const slug = formData.get('slug') as string;
   const { error } = await admin
@@ -57,6 +65,7 @@ export async function updatePostAction(id: string, formData: FormData) {
 }
 
 export async function deletePostAction(id: string, slug: string) {
+  await requireAuth();
   const admin = createAdminClient();
   await admin.from('posts').delete().eq('id', id);
   revalidatePath('/');
