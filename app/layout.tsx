@@ -66,7 +66,11 @@ export default function RootLayout({
       </head>
       <body className="bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 antialiased">
         {children}
-        {/* TODO: 애드센스 승인 후 Script 컴포넌트 추가 */}
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1269469831021875"
+          crossorigin="anonymous"
+        ></script>
       </body>
     </html>
   );
