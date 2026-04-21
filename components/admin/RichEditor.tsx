@@ -60,10 +60,16 @@ export default function RichEditor({ name, defaultValue = '' }: Props) {
   const handleImageUpload = useCallback(async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    const res = await fetch('/admin/api/upload-image', { method: 'POST', body: formData });
-    const data = await res.json();
-    if (data.url && editor) {
-      editor.chain().focus().setImage({ src: data.url }).run();
+    try {
+      const res = await fetch('/admin/api/upload-image', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        alert(`이미지 업로드 실패: ${data.error ?? res.status}`);
+        return;
+      }
+      editor?.chain().focus().setImage({ src: data.url }).run();
+    } catch (e) {
+      alert(`이미지 업로드 중 오류가 발생했습니다.`);
     }
   }, [editor]);
 
