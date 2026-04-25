@@ -49,6 +49,39 @@ CREATE POLICY "authenticated_all"
   WITH CHECK (true);
 
 -- ============================================================
+-- meter_records 테이블 (야장관리)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.meter_records (
+  id                bigserial   PRIMARY KEY,
+  block             text        NOT NULL,
+  row_no            text,                -- NO (엑셀 정렬번호)
+  name              text,                -- 성명
+  address           text,                -- 도로명주소
+  old_meter_number  text,                -- 기물번호(기존) - 읽기전용
+  meter_number      text,                -- 기물번호 - 편집가능
+  reading           text,                -- 지침
+  sealed            text,                -- 봉인유무
+  location          text,                -- 위치
+  usage_type        text,                -- 사용형태
+  floor             text,                -- 층수
+  note              text,                -- 비고
+  survey_date       text,                -- 조사일자(입력일시)
+  cover_type        text,                -- 보호통뚜껑양식
+  created_at        timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS meter_records_block_idx ON public.meter_records (block);
+
+ALTER TABLE public.meter_records ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "authenticated_all_meter"
+  ON public.meter_records
+  FOR ALL
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
+
+-- ============================================================
 -- 관리자 계정 생성 방법
 -- ============================================================
 -- 방법 A) Supabase Dashboard 사용 (권장)
