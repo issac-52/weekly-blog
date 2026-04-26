@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
-import { uploadToStorage, deleteFromStorage } from '@/lib/supabase-storage';
+import { uploadToStorage, deleteFromStorage } from '@/lib/r2-storage';
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();

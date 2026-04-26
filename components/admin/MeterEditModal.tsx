@@ -4,7 +4,7 @@ import { useState, useTransition, useRef } from 'react';
 import { X, Check, Camera, Trash2, ImagePlus, ExternalLink } from 'lucide-react';
 import { updateMeterRecord, type MeterRecord, type MeterInsert } from '@/app/admin/meter/_actions';
 
-const STORAGE_BASE = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/meter-images`;
+const STORAGE_BASE = process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
 const thumbnailUrl = (path: string) => `${STORAGE_BASE}/${path}`;
 const viewUrl = (path: string) => `${STORAGE_BASE}/${path}`;
 
