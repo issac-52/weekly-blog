@@ -1,4 +1,4 @@
-import { getMeterRecords, getBlockList, type SortCol, type SortDir } from './_actions';
+import { getMeterRecords, getBlockList, type SortCol, type SortDir, type StatusFilter } from './_actions';
 import MeterTable from '@/components/admin/MeterTable';
 
 export const metadata = { title: '야장관리' };
@@ -6,11 +6,12 @@ export const metadata = { title: '야장관리' };
 const PAGE_SIZE = 20;
 const VALID_SORT_COLS: SortCol[] = ['row_no', 'address', 'survey_date'];
 const VALID_SORT_DIRS: SortDir[] = ['asc', 'desc'];
+const VALID_STATUSES: StatusFilter[] = ['processed', 'unprocessed', 'closed'];
 
 export default async function MeterPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; block?: string; q?: string; sort?: string; dir?: string }>;
+  searchParams: Promise<{ page?: string; block?: string; q?: string; sort?: string; dir?: string; status?: string }>;
 }) {
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page ?? '1', 10));
@@ -18,18 +19,27 @@ export default async function MeterPage({
   const search = params.q?.trim() || undefined;
   const sortCol = (VALID_SORT_COLS.includes(params.sort as SortCol) ? params.sort : 'row_no') as SortCol;
   const sortDir = (VALID_SORT_DIRS.includes(params.dir as SortDir) ? params.dir : 'asc') as SortDir;
+  const status = (VALID_STATUSES.includes(params.status as StatusFilter) ? params.status : undefined) as StatusFilter | undefined;
 
-  const [{ data, count }, blocks] = await Promise.all([
-    getMeterRecords(page, PAGE_SIZE, block, search, sortCol, sortDir),
+  const [{ data, count, totalCount, processedCount, closedCount }, blocks] = await Promise.all([
+    getMeterRecords(page, PAGE_SIZE, block, search, sortCol, sortDir, status),
     getBlockList(),
   ]);
+
+  const unprocessedCount = totalCount - processedCount - closedCount;
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white">야장관리</h1>
-          <p className="text-sm text-zinc-500 mt-1">총 {count}개</p>
+          <p className="text-sm mt-1 flex items-center gap-2">
+            <span className="text-emerald-400">처리 {processedCount}개</span>
+            <span className="text-zinc-700">|</span>
+            <span className="text-zinc-500">미처리 {unprocessedCount}개</span>
+            <span className="text-zinc-700">|</span>
+            <span className="text-amber-500">호폐 {closedCount}개</span>
+          </p>
         </div>
       </div>
       <MeterTable
@@ -42,6 +52,10 @@ export default async function MeterPage({
         pageSize={PAGE_SIZE}
         sortCol={sortCol}
         sortDir={sortDir}
+        status={status ?? null}
+        processedCount={processedCount}
+        unprocessedCount={unprocessedCount}
+        closedCount={closedCount}
       />
     </div>
   );

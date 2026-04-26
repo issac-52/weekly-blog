@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Pencil, Upload, ChevronLeft, ChevronRight, Search, X, Camera, ChevronUp, ChevronDown, ChevronsUpDown, Copy, Check } from 'lucide-react';
-import { type MeterRecord, type SortCol, type SortDir } from '@/app/admin/meter/_actions';
+import { type MeterRecord, type SortCol, type SortDir, type StatusFilter } from '@/app/admin/meter/_actions';
 import MeterExcelUpload from './MeterExcelUpload';
 import MeterEditModal from './MeterEditModal';
 
@@ -17,6 +17,10 @@ type Props = {
   pageSize: number;
   sortCol: SortCol;
   sortDir: SortDir;
+  status: StatusFilter | null;
+  processedCount: number;
+  unprocessedCount: number;
+  closedCount: number;
 };
 
 function getPaginationRange(current: number, total: number): (number | '…')[] {
@@ -31,6 +35,12 @@ function Val({ value }: { value: string | null }) {
   return <span className="text-zinc-300">{value}</span>;
 }
 
+function getStatus(r: MeterRecord): 'processed' | 'unprocessed' | 'closed' {
+  if (r.note === '호폐') return 'closed';
+  if (r.meter_number && r.reading && r.sealed && r.location && r.usage_type && r.floor) return 'processed';
+  return 'unprocessed';
+}
+
 
 export default function MeterTable({
   records,
@@ -42,6 +52,10 @@ export default function MeterTable({
   pageSize,
   sortCol,
   sortDir,
+  status,
+  processedCount,
+  unprocessedCount,
+  closedCount,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -67,19 +81,19 @@ export default function MeterTable({
     newSearch?: string,
     newSortCol?: SortCol,
     newSortDir?: SortDir,
+    newStatus?: StatusFilter | null,
   ) {
     const params = new URLSearchParams();
     const b = newBlock !== undefined ? newBlock : selectedBlock;
     const q = newSearch !== undefined ? newSearch : search;
     const sc = newSortCol !== undefined ? newSortCol : sortCol;
     const sd = newSortDir !== undefined ? newSortDir : sortDir;
+    const st = newStatus !== undefined ? newStatus : status;
     if (b) params.set('block', b);
     if (q) params.set('q', q);
     if (newPage > 1) params.set('page', String(newPage));
-    if (sc !== 'row_no' || sd !== 'asc') {
-      params.set('sort', sc);
-      params.set('dir', sd);
-    }
+    if (sc !== 'row_no' || sd !== 'asc') { params.set('sort', sc); params.set('dir', sd); }
+    if (st) params.set('status', st);
     const qs = params.toString();
     router.push(qs ? `${pathname}?${qs}` : pathname);
   }
@@ -87,6 +101,10 @@ export default function MeterTable({
   function handleSort(col: SortCol) {
     const newDir: SortDir = sortCol === col && sortDir === 'asc' ? 'desc' : 'asc';
     navigate(1, undefined, undefined, col, newDir);
+  }
+
+  function handleStatus(s: StatusFilter | null) {
+    navigate(1, undefined, undefined, undefined, undefined, s);
   }
 
   function SortIcon({ col }: { col: SortCol }) {
@@ -145,6 +163,29 @@ export default function MeterTable({
         </button>
       </div>
 
+      {/* 상태 필터 */}
+      <div className="flex items-center gap-1.5 mb-3 flex-wrap text-xs">
+        {([
+          { s: null,            label: '전체',    count: processedCount + unprocessedCount + closedCount, cls: 'bg-zinc-700 text-white' },
+          { s: 'processed',     label: '처리됨',  count: processedCount,   cls: 'bg-emerald-400 text-zinc-950' },
+          { s: 'unprocessed',   label: '미처리',  count: unprocessedCount, cls: 'bg-zinc-400 text-zinc-950' },
+          { s: 'closed',        label: '호폐',    count: closedCount,      cls: 'bg-amber-400 text-zinc-950' },
+        ] as { s: StatusFilter | null; label: string; count: number; cls: string }[]).map(({ s, label, count, cls }) => (
+          <button
+            key={String(s)}
+            onClick={() => handleStatus(s)}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-semibold transition-colors ${
+              status === s ? cls : 'bg-zinc-800 text-zinc-400 hover:text-white'
+            }`}
+          >
+            {label}
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${status === s ? 'bg-black/20' : 'bg-zinc-700 text-zinc-400'}`}>
+              {count}
+            </span>
+          </button>
+        ))}
+      </div>
+
       {/* 검색창 */}
       <form onSubmit={handleSearch} className="flex gap-2 mb-4">
         <div className="relative flex-1">
@@ -155,7 +196,7 @@ export default function MeterTable({
             placeholder="도면번호 · 도로명주소 · 기물번호(기존) 검색"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            className="w-full bg-zinc-900 border border-zinc-700 rounded-lg pl-8 pr-8 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-400 transition-colors"
+            className="w-full bg-zinc-900 border border-zinc-700 rounded-lg pl-8 pr-8 py-2 text-base md:text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-400 transition-colors"
           />
           {searchInput && (
             <button
@@ -229,10 +270,10 @@ export default function MeterTable({
                 {records.map((r) => (
                   <tr
                     key={r.id}
-                    className="border-b border-zinc-800 last:border-0 hover:bg-zinc-900/60 transition-colors"
+                    className={`border-b border-zinc-800 last:border-0 hover:bg-zinc-900/60 transition-colors ${getStatus(r) === 'processed' ? 'bg-emerald-950/20' : getStatus(r) === 'closed' ? 'bg-amber-950/20' : ''}`}
                   >
                     {/* 수정 버튼 — sticky */}
-                    <td className="sticky left-0 z-10 bg-zinc-950 group-hover:bg-zinc-900/60 px-2 py-2 border-r border-zinc-800">
+                    <td className={`sticky left-0 z-10 px-2 py-2 border-r border-zinc-800 ${getStatus(r) === 'processed' ? 'bg-emerald-950/40' : getStatus(r) === 'closed' ? 'bg-amber-950/40' : 'bg-zinc-950'}`}>
                       <button
                         onClick={() => setEditingRecord(r)}
                         className="flex items-center gap-1 px-2 py-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors whitespace-nowrap"
@@ -240,14 +281,18 @@ export default function MeterTable({
                         <Pencil size={12} />
                         <span className="text-xs">수정</span>
                       </button>
-                      {(r.image1_id || r.image2_id) && (
-                        <div className="flex items-center gap-1 px-2 mt-0.5">
-                          <Camera size={10} className="text-emerald-400" />
-                          <span className="text-[10px] text-emerald-400">
-                            {[r.image1_id, r.image2_id].filter(Boolean).length}
+                      <div className="flex items-center gap-2 px-2 mt-0.5">
+                        {getStatus(r) === 'processed' && <span className="text-[10px] text-emerald-400 font-bold">✓</span>}
+                        {getStatus(r) === 'closed' && <span className="text-[10px] text-amber-400 font-bold">호폐</span>}
+                        {(r.image1_id || r.image2_id) && (
+                          <span className="flex items-center gap-1">
+                            <Camera size={10} className="text-emerald-400" />
+                            <span className="text-[10px] text-emerald-400">
+                              {[r.image1_id, r.image2_id].filter(Boolean).length}
+                            </span>
                           </span>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </td>
                     <td className="px-3 py-2 text-zinc-500 font-mono">{r.row_no ?? '-'}</td>
                     <td className="px-3 py-2 text-zinc-500 whitespace-nowrap">{r.name ?? '-'}</td>
@@ -296,18 +341,30 @@ export default function MeterTable({
           <div className="md:hidden space-y-2">
             {records.map((r) => {
               const hasSurvey = !!(r.meter_number || r.reading || r.sealed || r.survey_date);
+              const st = getStatus(r);
+              const cardCls =
+                st === 'processed' ? 'bg-emerald-950/30 border-emerald-900/60' :
+                st === 'closed'    ? 'bg-amber-950/30 border-amber-900/60' :
+                'bg-zinc-900 border-zinc-800';
               return (
-                <div key={r.id} className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+                <div key={r.id} className={`border rounded-xl overflow-hidden ${cardCls}`}>
                   {/* 카드 상단 정보 */}
                   <div className="p-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        {r.row_no && (
-                          <span className="text-zinc-600 text-xs font-mono shrink-0">도면{r.row_no}</span>
-                        )}
-                        <span className="text-white text-sm font-semibold truncate">
-                          {r.name ?? '-'}
-                        </span>
+                    <div className="flex items-start gap-2 mb-1">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          {r.row_no && (
+                            <span className="text-zinc-600 text-xs font-mono shrink-0">도면{r.row_no}</span>
+                          )}
+                          {st === 'processed' && (
+                            <span className="shrink-0 text-[10px] font-semibold text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded-full">완료</span>
+                          )}
+                          {st === 'closed' && (
+                            <span className="shrink-0 text-[10px] font-semibold text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded-full">호폐</span>
+                          )}
+                        </div>
+                        <p className="text-white text-sm font-semibold truncate">{r.address ?? '-'}</p>
+                        <p className="text-zinc-600 text-xs mt-0.5">{r.name ?? '-'}</p>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {(r.image1_id || r.image2_id) && (
@@ -328,7 +385,6 @@ export default function MeterTable({
                         )}
                       </div>
                     </div>
-                    <p className="text-zinc-500 text-xs truncate mb-1">{r.address ?? '-'}</p>
                     <p className="text-zinc-500 text-xs font-mono">
                       기물번호(기존): {r.old_meter_number ?? '-'}
                     </p>
