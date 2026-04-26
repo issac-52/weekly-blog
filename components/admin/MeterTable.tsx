@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Pencil, Upload, ChevronLeft, ChevronRight, Search, X, Camera, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { Pencil, Upload, ChevronLeft, ChevronRight, Search, X, Camera, ChevronUp, ChevronDown, ChevronsUpDown, Copy, Check } from 'lucide-react';
 import { type MeterRecord, type SortCol, type SortDir } from '@/app/admin/meter/_actions';
 import MeterExcelUpload from './MeterExcelUpload';
 import MeterEditModal from './MeterEditModal';
@@ -48,6 +48,14 @@ export default function MeterTable({
   const [editingRecord, setEditingRecord] = useState<MeterRecord | null>(null);
   const [showUpload, setShowUpload] = useState(false);
   const [searchInput, setSearchInput] = useState(search);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
+
+  function copyAddress(r: MeterRecord) {
+    if (!r.address) return;
+    navigator.clipboard.writeText(r.address);
+    setCopiedId(r.id);
+    setTimeout(() => setCopiedId(null), 1500);
+  }
   const searchRef = useRef<HTMLInputElement>(null);
 
   const totalPages = Math.ceil(total / pageSize);
@@ -293,18 +301,32 @@ export default function MeterTable({
                   {/* 카드 상단 정보 */}
                   <div className="p-4">
                     <div className="flex items-center gap-2 mb-1">
-                      {r.row_no && (
-                        <span className="text-zinc-600 text-xs font-mono">도면{r.row_no}</span>
-                      )}
-                      <span className="text-white text-sm font-semibold truncate">
-                        {r.name ?? '-'}
-                      </span>
-                      {(r.image1_id || r.image2_id) && (
-                        <span className="ml-auto flex items-center gap-1 text-emerald-400 shrink-0">
-                          <Camera size={12} />
-                          <span className="text-xs">{[r.image1_id, r.image2_id].filter(Boolean).length}</span>
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        {r.row_no && (
+                          <span className="text-zinc-600 text-xs font-mono shrink-0">도면{r.row_no}</span>
+                        )}
+                        <span className="text-white text-sm font-semibold truncate">
+                          {r.name ?? '-'}
                         </span>
-                      )}
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {(r.image1_id || r.image2_id) && (
+                          <span className="flex items-center gap-1 text-emerald-400">
+                            <Camera size={12} />
+                            <span className="text-xs">{[r.image1_id, r.image2_id].filter(Boolean).length}</span>
+                          </span>
+                        )}
+                        {r.address && (
+                          <button
+                            onClick={() => copyAddress(r)}
+                            className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-800 transition-colors"
+                          >
+                            {copiedId === r.id
+                              ? <Check size={13} className="text-emerald-400" />
+                              : <Copy size={13} />}
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <p className="text-zinc-500 text-xs truncate mb-1">{r.address ?? '-'}</p>
                     <p className="text-zinc-500 text-xs font-mono">
