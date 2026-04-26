@@ -35,17 +35,23 @@ async function requireAuth() {
   if (!user) throw new Error('Unauthorized');
 }
 
+export type SortCol = 'row_no' | 'address' | 'survey_date';
+export type SortDir = 'asc' | 'desc';
+
 export async function getMeterRecords(
   page: number,
   pageSize: number,
   block?: string,
   search?: string,
+  sortCol: SortCol = 'row_no',
+  sortDir: SortDir = 'asc',
 ) {
   const admin = createAdminClient();
+  const asc = sortDir === 'asc';
   let query = admin
     .from('meter_records')
     .select('*', { count: 'exact' })
-    .order('row_no', { ascending: true, nullsFirst: false })
+    .order(sortCol, { ascending: asc, nullsFirst: false })
     .range((page - 1) * pageSize, page * pageSize - 1);
   if (block) query = query.eq('block', block);
   if (search) {

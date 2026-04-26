@@ -2,8 +2,8 @@
 
 import { useState, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Pencil, Upload, ChevronLeft, ChevronRight, Search, X, Camera } from 'lucide-react';
-import { type MeterRecord } from '@/app/admin/meter/_actions';
+import { Pencil, Upload, ChevronLeft, ChevronRight, Search, X, Camera, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { type MeterRecord, type SortCol, type SortDir } from '@/app/admin/meter/_actions';
 import MeterExcelUpload from './MeterExcelUpload';
 import MeterEditModal from './MeterEditModal';
 
@@ -15,6 +15,8 @@ type Props = {
   total: number;
   page: number;
   pageSize: number;
+  sortCol: SortCol;
+  sortDir: SortDir;
 };
 
 function getPaginationRange(current: number, total: number): (number | '…')[] {
@@ -29,6 +31,7 @@ function Val({ value }: { value: string | null }) {
   return <span className="text-zinc-300">{value}</span>;
 }
 
+
 export default function MeterTable({
   records,
   blocks,
@@ -37,6 +40,8 @@ export default function MeterTable({
   total,
   page,
   pageSize,
+  sortCol,
+  sortDir,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -48,15 +53,39 @@ export default function MeterTable({
   const totalPages = Math.ceil(total / pageSize);
   const paginationRange = getPaginationRange(page, totalPages);
 
-  function navigate(newPage: number, newBlock?: string | null, newSearch?: string) {
+  function navigate(
+    newPage: number,
+    newBlock?: string | null,
+    newSearch?: string,
+    newSortCol?: SortCol,
+    newSortDir?: SortDir,
+  ) {
     const params = new URLSearchParams();
     const b = newBlock !== undefined ? newBlock : selectedBlock;
     const q = newSearch !== undefined ? newSearch : search;
+    const sc = newSortCol !== undefined ? newSortCol : sortCol;
+    const sd = newSortDir !== undefined ? newSortDir : sortDir;
     if (b) params.set('block', b);
     if (q) params.set('q', q);
     if (newPage > 1) params.set('page', String(newPage));
+    if (sc !== 'row_no' || sd !== 'asc') {
+      params.set('sort', sc);
+      params.set('dir', sd);
+    }
     const qs = params.toString();
     router.push(qs ? `${pathname}?${qs}` : pathname);
+  }
+
+  function handleSort(col: SortCol) {
+    const newDir: SortDir = sortCol === col && sortDir === 'asc' ? 'desc' : 'asc';
+    navigate(1, undefined, undefined, col, newDir);
+  }
+
+  function SortIcon({ col }: { col: SortCol }) {
+    if (sortCol !== col) return <ChevronsUpDown size={12} className="text-zinc-600" />;
+    return sortDir === 'asc'
+      ? <ChevronUp size={12} className="text-emerald-400" />
+      : <ChevronDown size={12} className="text-emerald-400" />;
   }
 
   function handleSearch(e: React.FormEvent) {
@@ -156,11 +185,20 @@ export default function MeterTable({
             <table className="w-full text-xs min-w-max">
               <thead>
                 <tr className="bg-zinc-900 border-b border-zinc-800">
-                  {/* 수정 버튼 — sticky 고정 */}
                   <th className="sticky left-0 z-10 bg-zinc-900 px-3 py-2.5 w-12" />
-                  <th className="px-3 py-2.5 text-left font-semibold text-zinc-500 whitespace-nowrap">도면번호</th>
+                  <th
+                    className="px-3 py-2.5 text-left font-semibold text-zinc-500 whitespace-nowrap cursor-pointer hover:text-zinc-300 select-none"
+                    onClick={() => handleSort('row_no')}
+                  >
+                    <span className="flex items-center gap-1">도면번호 <SortIcon col="row_no" /></span>
+                  </th>
                   <th className="px-3 py-2.5 text-left font-semibold text-zinc-500 whitespace-nowrap">성명</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-zinc-500 whitespace-nowrap">도로명주소</th>
+                  <th
+                    className="px-3 py-2.5 text-left font-semibold text-zinc-500 whitespace-nowrap cursor-pointer hover:text-zinc-300 select-none"
+                    onClick={() => handleSort('address')}
+                  >
+                    <span className="flex items-center gap-1">도로명주소 <SortIcon col="address" /></span>
+                  </th>
                   <th className="px-3 py-2.5 text-left font-semibold text-zinc-500 whitespace-nowrap">기물번호(기존)</th>
                   <th className="w-px bg-zinc-700" />
                   <th className="px-3 py-2.5 text-left font-semibold text-zinc-300 whitespace-nowrap">기물번호</th>
@@ -170,7 +208,12 @@ export default function MeterTable({
                   <th className="px-3 py-2.5 text-left font-semibold text-zinc-300 whitespace-nowrap">사용형태</th>
                   <th className="px-3 py-2.5 text-left font-semibold text-zinc-300 whitespace-nowrap">층수</th>
                   <th className="px-3 py-2.5 text-left font-semibold text-zinc-300 whitespace-nowrap">비고</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-zinc-300 whitespace-nowrap">조사일자</th>
+                  <th
+                    className="px-3 py-2.5 text-left font-semibold text-zinc-300 whitespace-nowrap cursor-pointer hover:text-white select-none"
+                    onClick={() => handleSort('survey_date')}
+                  >
+                    <span className="flex items-center gap-1">조사일자 <SortIcon col="survey_date" /></span>
+                  </th>
                   <th className="px-3 py-2.5 text-left font-semibold text-zinc-300 whitespace-nowrap">보호통뚜껑양식</th>
                 </tr>
               </thead>
@@ -216,6 +259,29 @@ export default function MeterTable({
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* ─── 모바일 정렬 바 ─── */}
+          <div className="md:hidden flex items-center gap-1.5 mb-3 text-xs">
+            <span className="text-zinc-600 shrink-0">정렬:</span>
+            {([
+              { col: 'row_no' as SortCol, label: '도면번호' },
+              { col: 'address' as SortCol, label: '도로명주소' },
+              { col: 'survey_date' as SortCol, label: '조사일자' },
+            ]).map(({ col, label }) => (
+              <button
+                key={col}
+                onClick={() => handleSort(col)}
+                className={`flex items-center gap-0.5 px-2.5 py-1 rounded-lg transition-colors ${
+                  sortCol === col
+                    ? 'bg-emerald-400/20 text-emerald-400 font-semibold'
+                    : 'bg-zinc-800 text-zinc-500'
+                }`}
+              >
+                {label}
+                {sortCol === col && (sortDir === 'asc' ? <ChevronUp size={11} /> : <ChevronDown size={11} />)}
+              </button>
+            ))}
           </div>
 
           {/* ─── 모바일 카드 ─── */}

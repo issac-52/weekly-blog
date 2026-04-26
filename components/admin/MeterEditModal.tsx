@@ -22,6 +22,8 @@ const LOCATION_OPTIONS = [
 
 const COVER_OPTIONS = ['', '뚜껑 파손', '뚜껑 없음', '없음'];
 
+const USAGE_TYPES = ['가정집', '상가', '주상복합', '빌라', '공공기관', '기타'];
+
 function nowString() {
   const d = new Date();
   const p = (n: number) => String(n).padStart(2, '0');
@@ -35,9 +37,9 @@ type Props = {
 
 const labelCls = 'block text-xs font-semibold text-zinc-400 mb-1.5';
 const inputCls =
-  'w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-400 transition-colors';
+  'w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-base md:text-sm text-white focus:outline-none focus:border-emerald-400 transition-colors';
 const selectCls =
-  'w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-400 transition-colors';
+  'w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-base md:text-sm text-white focus:outline-none focus:border-emerald-400 transition-colors';
 
 type ImageSlot = 1 | 2;
 
@@ -180,7 +182,20 @@ export default function MeterEditModal({ record, onClose }: Props) {
   const isSameInit =
     !!record.old_meter_number && record.meter_number === record.old_meter_number;
 
+  const initUsageSelect = (val: string | null) => {
+    if (!val) return '';
+    if (USAGE_TYPES.slice(0, -1).includes(val)) return val;
+    return '기타';
+  };
+  const initUsageCustom = (val: string | null) => {
+    if (!val) return '';
+    if (USAGE_TYPES.slice(0, -1).includes(val)) return '';
+    return val;
+  };
+
   const [meterSame, setMeterSame] = useState(isSameInit);
+  const [usageTypeSelect, setUsageTypeSelect] = useState(initUsageSelect(record.usage_type));
+  const [usageTypeCustom, setUsageTypeCustom] = useState(initUsageCustom(record.usage_type));
   const [values, setValues] = useState<Partial<MeterInsert>>({
     meter_number: record.meter_number,
     reading: record.reading,
@@ -213,13 +228,15 @@ export default function MeterEditModal({ record, onClose }: Props) {
 
   function handleSave() {
     startTransition(async () => {
+      const resolvedUsageType =
+        usageTypeSelect === '기타' ? (usageTypeCustom || null) : (usageTypeSelect || null);
       const payload: Partial<MeterInsert> = {
         ...values,
         meter_number: meterSame ? record.old_meter_number : (values.meter_number || null),
         reading: values.reading || null,
         sealed: values.sealed || null,
         location: values.location || null,
-        usage_type: values.usage_type || null,
+        usage_type: resolvedUsageType,
         floor: values.floor || null,
         note: values.note || null,
         cover_type: values.cover_type || null,
@@ -322,6 +339,7 @@ export default function MeterEditModal({ record, onClose }: Props) {
             ) : (
               <input
                 type="text"
+                inputMode="numeric"
                 placeholder="기물번호 입력"
                 value={(values.meter_number as string) ?? ''}
                 onChange={(e) => set('meter_number', e.target.value || null)}
@@ -334,7 +352,8 @@ export default function MeterEditModal({ record, onClose }: Props) {
           <div>
             <label className={labelCls}>지침</label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               placeholder="숫자 입력"
               value={(values.reading as string) ?? ''}
               onChange={(e) => set('reading', e.target.value || null)}
@@ -381,13 +400,29 @@ export default function MeterEditModal({ record, onClose }: Props) {
           {/* 사용형태 */}
           <div>
             <label className={labelCls}>사용형태</label>
-            <input
-              type="text"
-              placeholder="예: 가정집, 상가"
-              value={(values.usage_type as string) ?? ''}
-              onChange={(e) => set('usage_type', e.target.value || null)}
-              className={inputCls}
-            />
+            <select
+              value={usageTypeSelect}
+              onChange={(e) => {
+                setUsageTypeSelect(e.target.value);
+                if (e.target.value !== '기타') setUsageTypeCustom('');
+              }}
+              className={selectCls}
+            >
+              <option value="">— 선택 —</option>
+              {USAGE_TYPES.map((o) => (
+                <option key={o} value={o}>{o}</option>
+              ))}
+            </select>
+            {usageTypeSelect === '기타' && (
+              <input
+                type="text"
+                placeholder="직접 입력"
+                value={usageTypeCustom}
+                onChange={(e) => setUsageTypeCustom(e.target.value)}
+                className={`${inputCls} mt-2`}
+                autoFocus
+              />
+            )}
           </div>
 
           {/* 층수 */}
@@ -395,6 +430,7 @@ export default function MeterEditModal({ record, onClose }: Props) {
             <label className={labelCls}>층수</label>
             <input
               type="text"
+              inputMode="numeric"
               placeholder="예: 1, 2, B1"
               value={(values.floor as string) ?? ''}
               onChange={(e) => set('floor', e.target.value || null)}

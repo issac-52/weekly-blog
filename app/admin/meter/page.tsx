@@ -1,22 +1,26 @@
-import { getMeterRecords, getBlockList } from './_actions';
+import { getMeterRecords, getBlockList, type SortCol, type SortDir } from './_actions';
 import MeterTable from '@/components/admin/MeterTable';
 
 export const metadata = { title: '야장관리' };
 
 const PAGE_SIZE = 20;
+const VALID_SORT_COLS: SortCol[] = ['row_no', 'address', 'survey_date'];
+const VALID_SORT_DIRS: SortDir[] = ['asc', 'desc'];
 
 export default async function MeterPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; block?: string; q?: string }>;
+  searchParams: Promise<{ page?: string; block?: string; q?: string; sort?: string; dir?: string }>;
 }) {
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page ?? '1', 10));
   const block = params.block;
   const search = params.q?.trim() || undefined;
+  const sortCol = (VALID_SORT_COLS.includes(params.sort as SortCol) ? params.sort : 'row_no') as SortCol;
+  const sortDir = (VALID_SORT_DIRS.includes(params.dir as SortDir) ? params.dir : 'asc') as SortDir;
 
   const [{ data, count }, blocks] = await Promise.all([
-    getMeterRecords(page, PAGE_SIZE, block, search),
+    getMeterRecords(page, PAGE_SIZE, block, search, sortCol, sortDir),
     getBlockList(),
   ]);
 
@@ -36,6 +40,8 @@ export default async function MeterPage({
         total={count}
         page={page}
         pageSize={PAGE_SIZE}
+        sortCol={sortCol}
+        sortDir={sortDir}
       />
     </div>
   );

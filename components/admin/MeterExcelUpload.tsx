@@ -81,7 +81,12 @@ export default function MeterExcelUpload({ onClose }: Props) {
               raw !== null && raw !== undefined && String(raw).trim() !== ''
                 ? String(raw).trim()
                 : null;
-            (row as Record<string, unknown>)[dbKey] = val;
+            if (dbKey === 'name' && val) {
+              (row as Record<string, unknown>)[dbKey] =
+                val.length <= 1 ? val + '*' : val[0] + '*'.repeat(val.length - 1);
+            } else {
+              (row as Record<string, unknown>)[dbKey] = val;
+            }
           }
           return row as MeterInsert;
         });
