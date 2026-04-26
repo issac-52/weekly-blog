@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Pencil, Upload, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
+import { Pencil, Upload, ChevronLeft, ChevronRight, Search, X, Camera } from 'lucide-react';
 import { type MeterRecord } from '@/app/admin/meter/_actions';
 import MeterExcelUpload from './MeterExcelUpload';
 import MeterEditModal from './MeterEditModal';
@@ -189,6 +189,14 @@ export default function MeterTable({
                         <Pencil size={12} />
                         <span className="text-xs">수정</span>
                       </button>
+                      {(r.image1_id || r.image2_id) && (
+                        <div className="flex items-center gap-1 px-2 mt-0.5">
+                          <Camera size={10} className="text-emerald-400" />
+                          <span className="text-[10px] text-emerald-400">
+                            {[r.image1_id, r.image2_id].filter(Boolean).length}
+                          </span>
+                        </div>
+                      )}
                     </td>
                     <td className="px-3 py-2 text-zinc-500 font-mono">{r.row_no ?? '-'}</td>
                     <td className="px-3 py-2 text-zinc-500 whitespace-nowrap">{r.name ?? '-'}</td>
@@ -225,6 +233,12 @@ export default function MeterTable({
                       <span className="text-white text-sm font-semibold truncate">
                         {r.name ?? '-'}
                       </span>
+                      {(r.image1_id || r.image2_id) && (
+                        <span className="ml-auto flex items-center gap-1 text-emerald-400 shrink-0">
+                          <Camera size={12} />
+                          <span className="text-xs">{[r.image1_id, r.image2_id].filter(Boolean).length}</span>
+                        </span>
+                      )}
                     </div>
                     <p className="text-zinc-500 text-xs truncate mb-1">{r.address ?? '-'}</p>
                     <p className="text-zinc-500 text-xs font-mono">

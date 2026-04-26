@@ -20,6 +20,8 @@ export type MeterRecord = {
   note: string | null;
   survey_date: string | null;
   cover_type: string | null;
+  image1_id: string | null;
+  image2_id: string | null;
   created_at: string;
 };
 

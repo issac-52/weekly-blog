@@ -22,7 +22,8 @@
       "Bash(node -e \"const m = require\\('./node_modules/@tiptap/extension-text-style/dist/index.js'\\); console.log\\(Object.keys\\(m\\)\\)\")",
       "Bash(node -e \"const m = require\\('./node_modules/@tiptap/extension-color/dist/index.js'\\); console.log\\(Object.keys\\(m\\)\\)\")",
       "Bash(xargs grep *)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(npm uninstall *)"
     ]
   }
 }

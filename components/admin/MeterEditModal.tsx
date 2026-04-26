@@ -1,8 +1,12 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { X, Check } from 'lucide-react';
+import { useState, useTransition, useRef } from 'react';
+import { X, Check, Camera, Trash2, ImagePlus, ExternalLink } from 'lucide-react';
 import { updateMeterRecord, type MeterRecord, type MeterInsert } from '@/app/admin/meter/_actions';
+
+const STORAGE_BASE = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/meter-images`;
+const thumbnailUrl = (path: string) => `${STORAGE_BASE}/${path}`;
+const viewUrl = (path: string) => `${STORAGE_BASE}/${path}`;
 
 const LOCATION_OPTIONS = [
   '',
@@ -35,6 +39,143 @@ const inputCls =
 const selectCls =
   'w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-400 transition-colors';
 
+type ImageSlot = 1 | 2;
+
+function ImageSlotCard({
+  slot,
+  fileId,
+  rowNo,
+  recordId,
+  onUploaded,
+  onDeleted,
+}: {
+  slot: ImageSlot;
+  fileId: string | null;
+  rowNo: string | null;
+  recordId: number;
+  onUploaded: (slot: ImageSlot, newFileId: string) => void;
+  onDeleted: (slot: ImageSlot) => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!rowNo) {
+      setError('도면번호가 없어 이미지를 업로드할 수 없습니다.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('record_id', String(recordId));
+    fd.append('slot', String(slot));
+    fd.append('row_no', rowNo);
+    try {
+      const res = await fetch('/admin/api/upload-meter-image', { method: 'POST', body: fd });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? '업로드 실패');
+      onUploaded(slot, json.filePath);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+      if (inputRef.current) inputRef.current.value = '';
+    }
+  }
+
+  async function handleDelete() {
+    if (!fileId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/admin/api/upload-meter-image', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ record_id: recordId, slot, file_path: fileId }),
+      });
+      if (!res.ok) {
+        const json = await res.json();
+        throw new Error(json.error ?? '삭제 실패');
+      }
+      onDeleted(slot);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-xs text-zinc-500">
+        이미지 {slot}{' '}
+        {rowNo && (
+          <span className="text-zinc-600 font-mono">({rowNo}-{slot})</span>
+        )}
+      </span>
+
+      {fileId ? (
+        <div className="relative rounded-lg overflow-hidden border border-zinc-700 bg-zinc-800">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={thumbnailUrl(fileId)}
+            alt={`이미지 ${slot}`}
+            className="w-full h-28 object-cover"
+          />
+          <div className="absolute top-1.5 right-1.5 flex gap-1">
+            <a
+              href={viewUrl(fileId)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-1.5 bg-black/60 hover:bg-black/80 text-white rounded-md transition-colors"
+            >
+              <ExternalLink size={12} />
+            </a>
+            <button
+              onClick={handleDelete}
+              disabled={loading}
+              className="p-1.5 bg-black/60 hover:bg-red-500/80 text-white rounded-md transition-colors disabled:opacity-50"
+            >
+              <Trash2 size={12} />
+            </button>
+          </div>
+          {loading && (
+            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+              <span className="text-xs text-white">처리 중...</span>
+            </div>
+          )}
+        </div>
+      ) : (
+        <label
+          className={`flex flex-col items-center justify-center gap-1.5 h-28 rounded-lg border border-dashed border-zinc-700 bg-zinc-800/50 cursor-pointer hover:border-emerald-400/50 hover:bg-zinc-800 transition-colors ${loading ? 'opacity-50 pointer-events-none' : ''}`}
+        >
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+          {loading ? (
+            <span className="text-xs text-zinc-400">업로드 중...</span>
+          ) : (
+            <>
+              <ImagePlus size={18} className="text-zinc-500" />
+              <span className="text-xs text-zinc-500">이미지 추가</span>
+            </>
+          )}
+        </label>
+      )}
+
+      {error && <p className="text-xs text-red-400">{error}</p>}
+    </div>
+  );
+}
+
 export default function MeterEditModal({ record, onClose }: Props) {
   const isSameInit =
     !!record.old_meter_number && record.meter_number === record.old_meter_number;
@@ -51,6 +192,8 @@ export default function MeterEditModal({ record, onClose }: Props) {
     survey_date: nowString(),
     cover_type: record.cover_type ?? '',
   });
+  const [image1Id, setImage1Id] = useState<string | null>(record.image1_id);
+  const [image2Id, setImage2Id] = useState<string | null>(record.image2_id);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -65,7 +208,6 @@ export default function MeterEditModal({ record, onClose }: Props) {
 
   function selectX() {
     setMeterSame(false);
-    // 기존과 달랐던 값 유지, 없으면 빈값
     set('meter_number', isSameInit ? null : record.meter_number);
   }
 
@@ -91,13 +233,33 @@ export default function MeterEditModal({ record, onClose }: Props) {
     });
   }
 
+  function handleImageUploaded(slot: ImageSlot, newFileId: string) {
+    if (slot === 1) setImage1Id(newFileId);
+    else setImage2Id(newFileId);
+  }
+
+  function handleImageDeleted(slot: ImageSlot) {
+    if (slot === 1) setImage1Id(null);
+    else setImage2Id(null);
+  }
+
+  const imageCount = [image1Id, image2Id].filter(Boolean).length;
+
   return (
     <div className="fixed inset-0 bg-black/70 flex items-end md:items-center justify-center z-50 p-0 md:p-4">
       <div className="bg-zinc-900 border border-zinc-800 rounded-t-2xl md:rounded-xl w-full md:max-w-lg max-h-[92dvh] flex flex-col">
         {/* 헤더 */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-zinc-800">
           <div>
-            <p className="text-white font-semibold text-sm">수정</p>
+            <p className="text-white font-semibold text-sm flex items-center gap-2">
+              수정
+              {imageCount > 0 && (
+                <span className="flex items-center gap-1 text-xs font-normal text-emerald-400">
+                  <Camera size={12} />
+                  {imageCount}
+                </span>
+              )}
+            </p>
             <p className="text-zinc-500 text-xs mt-0.5">
               {record.row_no && <span className="mr-2">도면번호 {record.row_no}</span>}
               {record.name}
@@ -279,6 +441,32 @@ export default function MeterEditModal({ record, onClose }: Props) {
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* 이미지 */}
+          <div>
+            <label className={labelCls}>
+              이미지
+              <span className="ml-1.5 font-normal text-zinc-600">(최대 2장, 즉시 저장)</span>
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <ImageSlotCard
+                slot={1}
+                fileId={image1Id}
+                rowNo={record.row_no}
+                recordId={record.id}
+                onUploaded={handleImageUploaded}
+                onDeleted={handleImageDeleted}
+              />
+              <ImageSlotCard
+                slot={2}
+                fileId={image2Id}
+                rowNo={record.row_no}
+                recordId={record.id}
+                onUploaded={handleImageUploaded}
+                onDeleted={handleImageDeleted}
+              />
+            </div>
           </div>
         </div>
 

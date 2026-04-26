@@ -67,8 +67,14 @@ CREATE TABLE IF NOT EXISTS public.meter_records (
   note              text,                -- 비고
   survey_date       text,                -- 조사일자(입력일시)
   cover_type        text,                -- 보호통뚜껑양식
+  image1_id         text,                -- Supabase Storage 파일 경로 (이미지 1)
+  image2_id         text,                -- Supabase Storage 파일 경로 (이미지 2)
   created_at        timestamptz NOT NULL DEFAULT now()
 );
+
+-- 기존 DB에 이미지 컬럼 추가 시:
+-- ALTER TABLE public.meter_records ADD COLUMN IF NOT EXISTS image1_id TEXT;
+-- ALTER TABLE public.meter_records ADD COLUMN IF NOT EXISTS image2_id TEXT;
 
 CREATE INDEX IF NOT EXISTS meter_records_block_idx ON public.meter_records (block);
 
