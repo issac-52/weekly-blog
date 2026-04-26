@@ -339,7 +339,6 @@ export default function MeterEditModal({ record, onClose }: Props) {
             ) : (
               <input
                 type="text"
-                inputMode="numeric"
                 placeholder="기물번호 입력"
                 value={(values.meter_number as string) ?? ''}
                 onChange={(e) => set('meter_number', e.target.value || null)}
