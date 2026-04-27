@@ -403,15 +403,7 @@ export default function MeterTable({
                             <button
                               onClick={() => {
                                 const query = encodeURIComponent(r.address!);
-                                const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-                                if (isIOS) {
-                                  window.open(`https://map.naver.com/v5/search/${query}`, '_blank');
-                                } else {
-                                  window.location.href = `nmap://search?query=${query}`;
-                                  setTimeout(() => {
-                                    window.open(`https://map.naver.com/v5/search/${query}`, '_blank');
-                                  }, 300);
-                                }
+                                window.location.href = `nmap://search?query=${query}`;
                               }}
                               className="p-1.5 rounded-lg text-zinc-500 hover:text-emerald-400 hover:bg-zinc-800 transition-colors"
                             >
