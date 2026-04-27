@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
 
   const { record_id, slot, file_path } = (await request.json()) as {
     record_id: number;
-    slot: '1' | '2';
+    slot: 1 | 2;
     file_path: string;
   };
 
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
   }
 
   const admin = createAdminClient();
-  const column = slot === '1' ? 'image1_id' : 'image2_id';
+  const column = slot === 1 ? 'image1_id' : 'image2_id';
   const { error } = await admin
     .from('meter_records')
     .update({ [column]: file_path })
