@@ -320,12 +320,8 @@ export default function MeterEditModal({ record, onClose }: Props) {
         </div>
 
         {/* 식별 정보 */}
-        <div className="px-5 py-3 bg-zinc-950/50 border-b border-zinc-800 space-y-0.5">
+        <div className="px-5 py-3 bg-zinc-950/50 border-b border-zinc-800">
           <p className="text-xs text-zinc-500 truncate">{record.address ?? '-'}</p>
-          <p className="text-xs text-zinc-500">
-            기물번호(기존):{' '}
-            <span className="text-zinc-300 font-mono">{record.old_meter_number ?? '-'}</span>
-          </p>
         </div>
 
         {/* 폼 */}
@@ -338,11 +334,14 @@ export default function MeterEditModal({ record, onClose }: Props) {
 
           {/* 기물번호 */}
           <div>
-            <label className={labelCls}>기물번호</label>
+            <label className="block text-sm font-bold text-white mb-2">기물번호</label>
+            <p className="text-xs text-zinc-500 mb-2">
+              기존: <span className="font-mono text-zinc-300 text-sm">{record.old_meter_number ?? '-'}</span>
+            </p>
             <div className="flex gap-2 mb-2">
               <button
                 onClick={selectO}
-                className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors ${
+                className={`flex-1 py-2.5 rounded-lg text-base font-bold border transition-colors ${
                   meterSame
                     ? 'bg-emerald-400 border-emerald-400 text-zinc-950'
                     : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
@@ -352,7 +351,7 @@ export default function MeterEditModal({ record, onClose }: Props) {
               </button>
               <button
                 onClick={selectX}
-                className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors ${
+                className={`flex-1 py-2.5 rounded-lg text-base font-bold border transition-colors ${
                   !meterSame
                     ? 'bg-zinc-200 border-zinc-200 text-zinc-950'
                     : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
@@ -362,7 +361,7 @@ export default function MeterEditModal({ record, onClose }: Props) {
               </button>
             </div>
             {meterSame ? (
-              <div className="px-3 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-sm text-zinc-400 font-mono">
+              <div className="px-4 py-3 bg-zinc-800/50 border border-zinc-700 rounded-lg text-xl font-bold text-emerald-400 font-mono tracking-wider">
                 {record.old_meter_number ?? '-'}
               </div>
             ) : (
@@ -371,41 +370,41 @@ export default function MeterEditModal({ record, onClose }: Props) {
                 placeholder="기물번호 입력"
                 value={(values.meter_number as string) ?? ''}
                 onChange={(e) => set('meter_number', e.target.value || null)}
-                className={inputCls}
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-xl font-bold text-white font-mono tracking-wider focus:outline-none focus:border-emerald-400 transition-colors"
               />
             )}
           </div>
 
-          {/* 지침 */}
-          <div>
-            <label className={labelCls}>지침</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="숫자 입력"
-              value={(values.reading as string) ?? ''}
-              onChange={(e) => set('reading', e.target.value || null)}
-              className={inputCls}
-            />
-          </div>
-
-          {/* 봉인유무 */}
-          <div>
-            <label className={labelCls}>봉인유무</label>
-            <div className="flex gap-4">
-              {['유', '무'].map((v) => (
-                <label key={v} className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name={`sealed-${record.id}`}
-                    value={v}
-                    checked={values.sealed === v}
-                    onChange={() => set('sealed', v)}
-                    className="w-4 h-4 accent-emerald-400"
-                  />
-                  <span className="text-sm text-zinc-300">{v}</span>
-                </label>
-              ))}
+          {/* 지침 + 봉인유무 */}
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className={labelCls}>지침</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="숫자 입력"
+                value={(values.reading as string) ?? ''}
+                onChange={(e) => set('reading', e.target.value || null)}
+                className={inputCls}
+              />
+            </div>
+            <div className="shrink-0">
+              <label className={labelCls}>봉인유무</label>
+              <div className="flex gap-3 h-[42px] items-center">
+                {['유', '무'].map((v) => (
+                  <label key={v} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name={`sealed-${record.id}`}
+                      value={v}
+                      checked={values.sealed === v}
+                      onChange={() => set('sealed', v)}
+                      className="w-4 h-4 accent-emerald-400"
+                    />
+                    <span className="text-sm text-zinc-300">{v}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
 

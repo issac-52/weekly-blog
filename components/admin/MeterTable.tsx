@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Pencil, Upload, ChevronLeft, ChevronRight, Search, X, Camera, ChevronUp, ChevronDown, ChevronsUpDown, Copy, Check, RefreshCw } from 'lucide-react';
+import { Pencil, Upload, ChevronLeft, ChevronRight, Search, X, Camera, ChevronUp, ChevronDown, ChevronsUpDown, Copy, Check, RefreshCw, MapPin } from 'lucide-react';
 import { type MeterRecord, type SortCol, type SortDir, type StatusFilter } from '@/app/admin/meter/_actions';
 import MeterExcelUpload from './MeterExcelUpload';
 import MeterEditModal from './MeterEditModal';
@@ -391,14 +391,28 @@ export default function MeterTable({
                           </span>
                         )}
                         {r.address && (
-                          <button
-                            onClick={() => copyAddress(r)}
-                            className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-800 transition-colors"
-                          >
-                            {copiedId === r.id
-                              ? <Check size={13} className="text-emerald-400" />
-                              : <Copy size={13} />}
-                          </button>
+                          <>
+                            <button
+                              onClick={() => copyAddress(r)}
+                              className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-800 transition-colors"
+                            >
+                              {copiedId === r.id
+                                ? <Check size={13} className="text-emerald-400" />
+                                : <Copy size={13} />}
+                            </button>
+                            <button
+                              onClick={() => {
+                                const query = encodeURIComponent(r.address!);
+                                window.location.href = `nmap://search?query=${query}`;
+                                setTimeout(() => {
+                                  window.open(`https://map.naver.com/v5/search/${query}`, '_blank');
+                                }, 300);
+                              }}
+                              className="p-1.5 rounded-lg text-zinc-500 hover:text-emerald-400 hover:bg-zinc-800 transition-colors"
+                            >
+                              <MapPin size={13} />
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>
