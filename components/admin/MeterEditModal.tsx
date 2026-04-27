@@ -222,6 +222,7 @@ export default function MeterEditModal({ record, onClose }: Props) {
   };
 
   const [meterSame, setMeterSame] = useState(isSameInit);
+  const [isHopye, setIsHopye] = useState(record.note === '호폐');
   const [usageTypeSelect, setUsageTypeSelect] = useState(initUsageSelect(record.usage_type));
   const [usageTypeCustom, setUsageTypeCustom] = useState(initUsageCustom(record.usage_type));
   const [values, setValues] = useState<Partial<MeterInsert>>({
@@ -467,12 +468,31 @@ export default function MeterEditModal({ record, onClose }: Props) {
 
           {/* 비고 */}
           <div>
-            <label className={labelCls}>비고</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-zinc-400">비고</label>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={isHopye}
+                  onChange={(e) => {
+                    setIsHopye(e.target.checked);
+                    set('note', e.target.checked ? '호폐' : null);
+                  }}
+                  className="w-4 h-4 accent-amber-400"
+                />
+                <span className="text-sm font-semibold text-amber-400">호폐</span>
+              </label>
+            </div>
             <input
               type="text"
               value={(values.note as string) ?? ''}
-              onChange={(e) => set('note', e.target.value || null)}
-              className={inputCls}
+              onChange={(e) => {
+                set('note', e.target.value || null);
+                setIsHopye(e.target.value === '호폐');
+              }}
+              disabled={isHopye}
+              placeholder={isHopye ? '' : '비고 입력'}
+              className={`${inputCls} ${isHopye ? 'opacity-50 cursor-not-allowed' : ''}`}
             />
           </div>
 

@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Pencil, Upload, ChevronLeft, ChevronRight, Search, X, Camera, ChevronUp, ChevronDown, ChevronsUpDown, Copy, Check } from 'lucide-react';
+import { Pencil, Upload, ChevronLeft, ChevronRight, Search, X, Camera, ChevronUp, ChevronDown, ChevronsUpDown, Copy, Check, RefreshCw } from 'lucide-react';
 import { type MeterRecord, type SortCol, type SortDir, type StatusFilter } from '@/app/admin/meter/_actions';
 import MeterExcelUpload from './MeterExcelUpload';
 import MeterEditModal from './MeterEditModal';
@@ -63,6 +63,13 @@ export default function MeterTable({
   const [showUpload, setShowUpload] = useState(false);
   const [searchInput, setSearchInput] = useState(search);
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  function handleRefresh() {
+    setIsRefreshing(true);
+    router.refresh();
+    setTimeout(() => setIsRefreshing(false), 800);
+  }
 
   function copyAddress(r: MeterRecord) {
     if (!r.address) return;
@@ -153,14 +160,24 @@ export default function MeterTable({
             {b}
           </button>
         ))}
-        <button
-          onClick={() => setShowUpload(true)}
-          className="ml-auto flex items-center gap-1.5 px-4 py-2 bg-emerald-400 text-zinc-950 font-semibold text-sm rounded-lg hover:bg-emerald-300 transition-colors"
-        >
-          <Upload size={14} />
-          <span className="hidden sm:inline">엑셀 업로드</span>
-          <span className="sm:hidden">업로드</span>
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={handleRefresh}
+            className="flex items-center gap-1.5 px-3 py-2 bg-zinc-800 text-zinc-400 hover:text-white text-sm rounded-lg hover:bg-zinc-700 transition-colors"
+            title="새로고침"
+          >
+            <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">새로고침</span>
+          </button>
+          <button
+            onClick={() => setShowUpload(true)}
+            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-400 text-zinc-950 font-semibold text-sm rounded-lg hover:bg-emerald-300 transition-colors"
+          >
+            <Upload size={14} />
+            <span className="hidden sm:inline">엑셀 업로드</span>
+            <span className="sm:hidden">업로드</span>
+          </button>
+        </div>
       </div>
 
       {/* 상태 필터 */}
