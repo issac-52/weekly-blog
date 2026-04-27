@@ -71,16 +71,44 @@ function ImageSlotCard({
     }
     setLoading(true);
     setError(null);
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('record_id', String(recordId));
-    fd.append('slot', String(slot));
-    fd.append('row_no', rowNo);
     try {
-      const res = await fetch('/admin/api/upload-meter-image', { method: 'POST', body: fd });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? '업로드 실패');
-      onUploaded(slot, json.filePath);
+      // 1단계: 서버에서 presigned URL 발급
+      const params = new URLSearchParams({
+        record_id: String(recordId),
+        slot: String(slot),
+        row_no: rowNo,
+        content_type: file.type || 'image/jpeg',
+      });
+      const presignRes = await fetch(`/admin/api/upload-meter-image?${params}`);
+      if (!presignRes.ok) {
+        const j = await presignRes.json().catch(() => ({})) as { error?: string };
+        throw new Error(j.error ?? '업로드 준비 실패');
+      }
+      const { presignedUrl, filePath } = await presignRes.json() as {
+        presignedUrl: string;
+        filePath: string;
+      };
+
+      // 2단계: 브라우저 → R2 직접 업로드 (크기 제한 없음)
+      const uploadRes = await fetch(presignedUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type || 'image/jpeg' },
+      });
+      if (!uploadRes.ok) throw new Error('스토리지 업로드 실패');
+
+      // 3단계: DB에 경로 저장
+      const saveRes = await fetch('/admin/api/upload-meter-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ record_id: recordId, slot, file_path: filePath }),
+      });
+      if (!saveRes.ok) {
+        const j = await saveRes.json().catch(() => ({})) as { error?: string };
+        throw new Error(j.error ?? '저장 실패');
+      }
+
+      onUploaded(slot, filePath);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
