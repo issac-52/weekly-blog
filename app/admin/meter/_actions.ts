@@ -147,3 +147,13 @@ export async function deleteMeterRecord(id: number) {
   revalidatePath('/admin/meter');
   return { success: true };
 }
+
+export async function getMeterRecordsForExport(blocks: string[]): Promise<MeterRecord[]> {
+  await requireAuth();
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from('meter_records')
+    .select('*')
+    .in('block', blocks);
+  return (data ?? []) as MeterRecord[];
+}

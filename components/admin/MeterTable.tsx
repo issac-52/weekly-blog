@@ -2,9 +2,10 @@
 
 import { useState, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Pencil, Upload, ChevronLeft, ChevronRight, Search, X, Camera, ChevronUp, ChevronDown, ChevronsUpDown, Copy, Check, RefreshCw, MapPin } from 'lucide-react';
+import { Pencil, Upload, Download, ChevronLeft, ChevronRight, Search, X, Camera, ChevronUp, ChevronDown, ChevronsUpDown, Copy, Check, RefreshCw, MapPin } from 'lucide-react';
 import { type MeterRecord, type SortCol, type SortDir, type StatusFilter } from '@/app/admin/meter/_actions';
 import MeterExcelUpload from './MeterExcelUpload';
+import MeterExcelConvert from './MeterExcelConvert';
 import MeterEditModal from './MeterEditModal';
 
 type Props = {
@@ -61,6 +62,7 @@ export default function MeterTable({
   const pathname = usePathname();
   const [editingRecord, setEditingRecord] = useState<MeterRecord | null>(null);
   const [showUpload, setShowUpload] = useState(false);
+  const [showConvert, setShowConvert] = useState(false);
   const [searchInput, setSearchInput] = useState(search);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -168,6 +170,14 @@ export default function MeterTable({
           >
             <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
             <span className="hidden sm:inline">새로고침</span>
+          </button>
+          <button
+            onClick={() => setShowConvert(true)}
+            className="flex items-center gap-1.5 px-4 py-2 bg-zinc-700 text-zinc-200 font-semibold text-sm rounded-lg hover:bg-zinc-600 transition-colors"
+          >
+            <Download size={14} />
+            <span className="hidden sm:inline">엑셀 컨버팅</span>
+            <span className="sm:hidden">컨버팅</span>
           </button>
           <button
             onClick={() => setShowUpload(true)}
@@ -513,6 +523,7 @@ export default function MeterTable({
         <MeterEditModal record={editingRecord} onClose={() => setEditingRecord(null)} />
       )}
       {showUpload && <MeterExcelUpload onClose={() => setShowUpload(false)} />}
+      {showConvert && <MeterExcelConvert onClose={() => setShowConvert(false)} />}
     </div>
   );
 }
