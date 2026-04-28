@@ -5,26 +5,51 @@ import * as XLSX from 'xlsx';
 import { X, Download, Upload, RefreshCw } from 'lucide-react';
 import { getMeterRecordsForExport, type MeterRecord } from '@/app/admin/meter/_actions';
 
-// 0-based 컬럼 인덱스 — EXCEL_MAP의 __EMPTY_N = N번째 컬럼
-const OLD_METER_COL = 7;  // old_meter_number (매칭 키)
-const DATA_START_ROW = 3; // 헤더 3행(row 0~2) 스킵
-
-// 고정 컬럼 인덱스(숫자로 특정 가능한 필드)
-const FIXED_WRITE_COLS: { dbKey: keyof MeterRecord; colIdx: number }[] = [
-  { dbKey: 'meter_number', colIdx: 8  },
-  { dbKey: 'reading',      colIdx: 13 },
-  { dbKey: 'sealed',       colIdx: 14 },
-  { dbKey: 'location',     colIdx: 17 },
-  { dbKey: 'usage_type',   colIdx: 23 },
-  { dbKey: 'floor',        colIdx: 26 },
+// DB 필드 → 엑셀 key 매핑 (MeterExcelUpload의 EXCEL_MAP 역방향)
+// key는 sheet_to_json이 생성하는 것과 동일한 규칙: 빈 헤더셀 = __EMPTY, __EMPTY_1, __EMPTY_2 ...
+const DB_WRITE_MAP: { dbKey: keyof MeterRecord; excelKey: string }[] = [
+  { dbKey: 'meter_number', excelKey: '__EMPTY_8'  },
+  { dbKey: 'reading',      excelKey: '__EMPTY_13' },
+  { dbKey: 'sealed',       excelKey: '__EMPTY_14' },
+  { dbKey: 'location',     excelKey: '__EMPTY_17' },
+  { dbKey: 'usage_type',   excelKey: '__EMPTY_23' },
+  { dbKey: 'floor',        excelKey: '__EMPTY_26' },
+  { dbKey: 'note',         excelKey: '비고'        },
+  { dbKey: 'survey_date',  excelKey: '조사일자'    },
+  { dbKey: 'cover_type',   excelKey: '보호통뚜껑양식' },
 ];
 
-// 헤더 텍스트로 컬럼을 찾아야 하는 필드
-const NAMED_WRITE_COLS: { dbKey: keyof MeterRecord; headerName: string }[] = [
-  { dbKey: 'note',        headerName: '비고' },
-  { dbKey: 'survey_date', headerName: '조사일자' },
-  { dbKey: 'cover_type',  headerName: '보호통뚜껑양식' },
-];
+const OLD_METER_EXCEL_KEY = '__EMPTY_7'; // 기물번호(기존) — 매칭 키
+const DATA_START = 3; // sheet_to_json default 모드: row 0 = header, 1~2 = sub-header → data from row 3
+
+/**
+ * 헤더 행(row 0)을 raw 스캔하여 "엑셀 key → 실제 컬럼 인덱스" 맵 생성.
+ * sheet_to_json의 내부 규칙과 동일:
+ *   - 값이 있는 셀 → 그 값을 key로
+ *   - 빈 셀 → __EMPTY (첫 번째), __EMPTY_1, __EMPTY_2, ... 순으로 부여
+ */
+function buildColMap(ws: XLSX.WorkSheet): Record<string, number> {
+  const raw = XLSX.utils.sheet_to_json<(string | null)[]>(ws, {
+    header: 1,
+    defval: null,
+    raw: false,
+  });
+  const headerArr = (raw[0] ?? []) as (string | null)[];
+  const map: Record<string, number> = {};
+  let emptyCount = 0;
+
+  for (let c = 0; c < headerArr.length; c++) {
+    const trimmed = headerArr[c] ? String(headerArr[c]).trim() : '';
+    if (trimmed) {
+      map[trimmed] = c;
+    } else {
+      const key = emptyCount === 0 ? '__EMPTY' : `__EMPTY_${emptyCount}`;
+      map[key] = c;
+      emptyCount++;
+    }
+  }
+  return map;
+}
 
 type Stats = { total: number; matched: number };
 type Props = { onClose: () => void };
@@ -51,16 +76,39 @@ export default function MeterExcelConvert({ onClose }: Props) {
         const wb = XLSX.read(buf, { type: 'array' });
         const ws = wb.Sheets[wb.SheetNames[0]];
 
-        // 블록 목록 파악 (sheet_to_json 활용)
-        const allParsed = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, {
+        // 헤더 스캔 → 실제 컬럼 인덱스 맵
+        const colMap = buildColMap(ws);
+
+        // old_meter_number 컬럼 검증
+        const oldMeterColIdx = colMap[OLD_METER_EXCEL_KEY] ?? -1;
+        if (oldMeterColIdx < 0) {
+          setError(`기물번호(기존) 컬럼(${OLD_METER_EXCEL_KEY})을 찾을 수 없습니다. 엑셀 형식을 확인하세요.`);
+          return;
+        }
+
+        // write 컬럼 목록 (colMap 기반으로 실제 인덱스 결정)
+        const writeCols = DB_WRITE_MAP
+          .map(({ dbKey, excelKey }) => ({ dbKey, colIdx: colMap[excelKey] ?? -1 }))
+          .filter(({ colIdx }) => colIdx >= 0);
+
+        // raw rows로 블록 + 데이터 읽기
+        const rawRows = XLSX.utils.sheet_to_json<(string | null)[]>(ws, {
+          header: 1,
           defval: null,
           raw: false,
         });
-        const dataRows = allParsed.slice(2);
+
+        // 블록 컬럼 — 헤더에 '\r\n' 포함되어 있을 수 있어서 공백 제거 후 비교
+        const blockColIdx = Object.entries(colMap).find(
+          ([k]) => k.replace(/\s/g, '') === '블록구분'
+        )?.[1] ?? -1;
+
+        const dataRawRows = rawRows.slice(DATA_START) as (string | null)[][];
+
         const blocks = [...new Set(
-          dataRows
-            .map(r => r['블록\r\n구분'] as string | null)
-            .filter((b): b is string => !!b && b.trim() !== '')
+          dataRawRows
+            .map(row => blockColIdx >= 0 ? String(row[blockColIdx] ?? '').trim() : '')
+            .filter(b => !!b)
         )];
 
         if (blocks.length === 0) {
@@ -69,35 +117,18 @@ export default function MeterExcelConvert({ onClose }: Props) {
         }
 
         startTransition(async () => {
-          // DB에서 해당 블록 레코드 전체 조회
           const dbRecords = await getMeterRecordsForExport(blocks);
           const dbMap = new Map<string, MeterRecord>();
           for (const rec of dbRecords) {
             if (rec.old_meter_number) dbMap.set(rec.old_meter_number.trim(), rec);
           }
 
-          // row 0에서 named 컬럼 인덱스 스캔
-          const range = XLSX.utils.decode_range(ws['!ref'] ?? 'A1');
-          const namedColMap: Record<string, number> = {};
-          for (let c = range.s.c; c <= range.e.c; c++) {
-            const cell = ws[XLSX.utils.encode_cell({ r: 0, c })];
-            const val = cell ? String(cell.v ?? '').trim() : '';
-            if (val) namedColMap[val] = c;
-          }
-
-          const writeCols = [
-            ...FIXED_WRITE_COLS,
-            ...NAMED_WRITE_COLS
-              .map(({ dbKey, headerName }) => ({ dbKey, colIdx: namedColMap[headerName] ?? -1 }))
-              .filter(({ colIdx }) => colIdx >= 0),
-          ];
-
           let total = 0;
           let matched = 0;
 
-          for (let rowIdx = DATA_START_ROW; rowIdx <= range.e.r; rowIdx++) {
-            const oldMeterCell = ws[XLSX.utils.encode_cell({ r: rowIdx, c: OLD_METER_COL })];
-            const oldMeterNum = oldMeterCell ? String(oldMeterCell.v ?? '').trim() : '';
+          for (let i = 0; i < dataRawRows.length; i++) {
+            const row = dataRawRows[i];
+            const oldMeterNum = String(row[oldMeterColIdx] ?? '').trim();
             if (!oldMeterNum) continue;
             total++;
 
@@ -105,10 +136,11 @@ export default function MeterExcelConvert({ onClose }: Props) {
             if (!rec) continue;
             matched++;
 
+            const wsRowIdx = i + DATA_START;
             for (const { dbKey, colIdx } of writeCols) {
               const val = rec[dbKey];
               if (val == null) continue;
-              ws[XLSX.utils.encode_cell({ r: rowIdx, c: colIdx })] = { v: String(val), t: 's' };
+              ws[XLSX.utils.encode_cell({ r: wsRowIdx, c: colIdx })] = { v: String(val), t: 's' };
             }
           }
 
@@ -116,7 +148,8 @@ export default function MeterExcelConvert({ onClose }: Props) {
           setConvertedWb(wb);
           setStep(2);
         });
-      } catch {
+      } catch (err) {
+        console.error('[MeterExcelConvert]', err);
         setError('파일을 읽는 중 오류가 발생했습니다.');
       }
     };
@@ -164,7 +197,6 @@ export default function MeterExcelConvert({ onClose }: Props) {
             <>
               <p className="text-zinc-400 text-sm mb-4">
                 원본 엑셀 파일을 업로드하면, DB에 저장된 조사 데이터로 채워진 파일을 반환합니다.
-                <br />
                 <span className="text-zinc-600 text-xs mt-1 block">기물번호(기존)으로 매칭 · DB에 값이 있는 항목만 덮어씀</span>
               </p>
               <div
