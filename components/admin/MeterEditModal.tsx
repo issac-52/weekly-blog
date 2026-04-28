@@ -18,6 +18,7 @@ const LOCATION_OPTIONS = [
   '건물 우(외부)',
   '건물 뒤(내부)',
   '건물 뒤(외부)',
+  '기타',
 ];
 
 const COVER_OPTIONS = ['', '뚜껑 파손', '뚜껑 없음', '없음'];
@@ -60,6 +61,7 @@ function ImageSlotCard({
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cacheBust, setCacheBust] = useState(() => Date.now());
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -108,6 +110,7 @@ function ImageSlotCard({
         throw new Error(j.error ?? '저장 실패');
       }
 
+      setCacheBust(Date.now());
       onUploaded(slot, filePath);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -152,7 +155,7 @@ function ImageSlotCard({
         <div className="relative rounded-lg overflow-hidden border border-zinc-700 bg-zinc-800">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={thumbnailUrl(fileId)}
+            src={`${thumbnailUrl(fileId)}?t=${cacheBust}`}
             alt={`이미지 ${slot}`}
             className="w-full h-28 object-cover"
           />
@@ -220,16 +223,27 @@ export default function MeterEditModal({ record, onClose }: Props) {
     if (USAGE_TYPES.slice(0, -1).includes(val)) return '';
     return val;
   };
+  const initLocationSelect = (val: string | null) => {
+    if (!val) return '';
+    if (LOCATION_OPTIONS.slice(0, -1).includes(val)) return val;
+    return '기타';
+  };
+  const initLocationCustom = (val: string | null) => {
+    if (!val) return '';
+    if (LOCATION_OPTIONS.slice(0, -1).includes(val)) return '';
+    return val;
+  };
 
   const [meterSame, setMeterSame] = useState(isSameInit);
   const [isHopye, setIsHopye] = useState(record.note === '호폐');
   const [usageTypeSelect, setUsageTypeSelect] = useState(initUsageSelect(record.usage_type));
   const [usageTypeCustom, setUsageTypeCustom] = useState(initUsageCustom(record.usage_type));
+  const [locationSelect, setLocationSelect] = useState(initLocationSelect(record.location));
+  const [locationCustom, setLocationCustom] = useState(initLocationCustom(record.location));
   const [values, setValues] = useState<Partial<MeterInsert>>({
     meter_number: record.meter_number,
     reading: record.reading,
     sealed: record.sealed ?? '유',
-    location: record.location ?? '',
     usage_type: record.usage_type,
     floor: record.floor,
     note: record.note,
@@ -259,12 +273,14 @@ export default function MeterEditModal({ record, onClose }: Props) {
     startTransition(async () => {
       const resolvedUsageType =
         usageTypeSelect === '기타' ? (usageTypeCustom || null) : (usageTypeSelect || null);
+      const resolvedLocation =
+        locationSelect === '기타' ? (locationCustom || null) : (locationSelect || null);
       const payload: Partial<MeterInsert> = {
         ...values,
         meter_number: meterSame ? record.old_meter_number : (values.meter_number || null),
         reading: values.reading || null,
         sealed: values.sealed || null,
-        location: values.location || null,
+        location: resolvedLocation,
         usage_type: resolvedUsageType,
         floor: values.floor || null,
         note: values.note || null,
@@ -412,8 +428,11 @@ export default function MeterEditModal({ record, onClose }: Props) {
           <div>
             <label className={labelCls}>위치</label>
             <select
-              value={(values.location as string) ?? ''}
-              onChange={(e) => set('location', e.target.value || null)}
+              value={locationSelect}
+              onChange={(e) => {
+                setLocationSelect(e.target.value);
+                if (e.target.value !== '기타') setLocationCustom('');
+              }}
               className={selectCls}
             >
               {LOCATION_OPTIONS.map((o) => (
@@ -422,6 +441,16 @@ export default function MeterEditModal({ record, onClose }: Props) {
                 </option>
               ))}
             </select>
+            {locationSelect === '기타' && (
+              <input
+                type="text"
+                placeholder="직접 입력"
+                value={locationCustom}
+                onChange={(e) => setLocationCustom(e.target.value)}
+                className={`${inputCls} mt-2`}
+                autoFocus
+              />
+            )}
           </div>
 
           {/* 사용형태 */}
