@@ -324,6 +324,9 @@ export default function MeterEditModal({ record, onClose }: Props) {
             </p>
             <p className="text-zinc-500 text-xs mt-0.5">
               {record.row_no && <span className="mr-2">도면번호 {record.row_no}</span>}
+              {record.old_meter_number && (
+                <span className="mr-2 font-mono text-zinc-300">기존 {record.old_meter_number}</span>
+              )}
               {record.name}
             </p>
           </div>
@@ -351,9 +354,6 @@ export default function MeterEditModal({ record, onClose }: Props) {
           {/* 기물번호 */}
           <div>
             <label className="block text-sm font-bold text-white mb-2">기물번호</label>
-            <p className="text-xs text-zinc-500 mb-2">
-              기존: <span className="font-mono text-zinc-300 text-sm">{record.old_meter_number ?? '-'}</span>
-            </p>
             <div className="flex gap-2 mb-2">
               <button
                 onClick={selectO}
@@ -389,6 +389,32 @@ export default function MeterEditModal({ record, onClose }: Props) {
                 className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-xl font-bold text-white font-mono tracking-wider focus:outline-none focus:border-emerald-400 transition-colors"
               />
             )}
+          </div>
+
+          {/* 이미지 */}
+          <div>
+            <label className={labelCls}>
+              이미지
+              <span className="ml-1.5 font-normal text-zinc-600">(최대 2장, 즉시 저장)</span>
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <ImageSlotCard
+                slot={1}
+                fileId={image1Id}
+                rowNo={record.row_no}
+                recordId={record.id}
+                onUploaded={handleImageUploaded}
+                onDeleted={handleImageDeleted}
+              />
+              <ImageSlotCard
+                slot={2}
+                fileId={image2Id}
+                rowNo={record.row_no}
+                recordId={record.id}
+                onUploaded={handleImageUploaded}
+                onDeleted={handleImageDeleted}
+              />
+            </div>
           </div>
 
           {/* 지침 + 봉인유무 */}
@@ -554,31 +580,6 @@ export default function MeterEditModal({ record, onClose }: Props) {
             </select>
           </div>
 
-          {/* 이미지 */}
-          <div>
-            <label className={labelCls}>
-              이미지
-              <span className="ml-1.5 font-normal text-zinc-600">(최대 2장, 즉시 저장)</span>
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <ImageSlotCard
-                slot={1}
-                fileId={image1Id}
-                rowNo={record.row_no}
-                recordId={record.id}
-                onUploaded={handleImageUploaded}
-                onDeleted={handleImageDeleted}
-              />
-              <ImageSlotCard
-                slot={2}
-                fileId={image2Id}
-                rowNo={record.row_no}
-                recordId={record.id}
-                onUploaded={handleImageUploaded}
-                onDeleted={handleImageDeleted}
-              />
-            </div>
-          </div>
         </div>
 
         {/* 푸터 */}

@@ -73,7 +73,7 @@ export default function MeterExcelConvert({ onClose }: Props) {
     reader.onload = (evt) => {
       try {
         const buf = new Uint8Array(evt.target?.result as ArrayBuffer);
-        const wb = XLSX.read(buf, { type: 'array' });
+        const wb = XLSX.read(buf, { type: 'array', cellStyles: true, cellNF: true, cellFormula: true });
         const ws = wb.Sheets[wb.SheetNames[0]];
 
         // 헤더 스캔 → 실제 컬럼 인덱스 맵
@@ -140,7 +140,9 @@ export default function MeterExcelConvert({ onClose }: Props) {
             for (const { dbKey, colIdx } of writeCols) {
               const val = rec[dbKey];
               if (val == null) continue;
-              ws[XLSX.utils.encode_cell({ r: wsRowIdx, c: colIdx })] = { v: String(val), t: 's' };
+              const addr = XLSX.utils.encode_cell({ r: wsRowIdx, c: colIdx });
+              const existing = ws[addr] ?? {};
+              ws[addr] = { ...existing, v: String(val), t: 's', f: undefined };
             }
           }
 
@@ -158,7 +160,7 @@ export default function MeterExcelConvert({ onClose }: Props) {
 
   function handleDownload() {
     if (!convertedWb) return;
-    const outBuf = XLSX.write(convertedWb, { type: 'array', bookType: 'xlsx' });
+    const outBuf = XLSX.write(convertedWb, { type: 'array', bookType: 'xlsx', cellStyles: true });
     const blob = new Blob([outBuf], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
