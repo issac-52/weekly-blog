@@ -157,3 +157,21 @@ export async function getMeterRecordsForExport(blocks: string[]): Promise<MeterR
     .in('block', blocks);
   return (data ?? []) as MeterRecord[];
 }
+
+export async function getCompletedRecords(): Promise<MeterRecord[]> {
+  await requireAuth();
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from('meter_records')
+    .select('*')
+    .or(
+      // 처리됨: 6개 필드 모두 있고 호폐 아님
+      `and(note.is.null,meter_number.not.is.null,reading.not.is.null,sealed.not.is.null,location.not.is.null,usage_type.not.is.null,floor.not.is.null),` +
+      `and(note.neq.호폐,meter_number.not.is.null,reading.not.is.null,sealed.not.is.null,location.not.is.null,usage_type.not.is.null,floor.not.is.null),` +
+      // 호폐
+      `note.eq.호폐`
+    )
+    .order('block', { ascending: true })
+    .order('row_no', { ascending: true, nullsFirst: false });
+  return (data ?? []) as MeterRecord[];
+}

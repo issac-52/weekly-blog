@@ -3,9 +3,9 @@
 import { useState, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Pencil, Upload, Download, ChevronLeft, ChevronRight, Search, X, Camera, ChevronUp, ChevronDown, ChevronsUpDown, Copy, Check, RefreshCw, MapPin } from 'lucide-react';
-import { type MeterRecord, type SortCol, type SortDir, type StatusFilter } from '@/app/admin/meter/_actions';
+import * as XLSX from 'xlsx';
+import { type MeterRecord, type SortCol, type SortDir, type StatusFilter, getCompletedRecords } from '@/app/admin/meter/_actions';
 import MeterExcelUpload from './MeterExcelUpload';
-import MeterExcelConvert from './MeterExcelConvert';
 import MeterEditModal from './MeterEditModal';
 
 type Props = {
@@ -62,7 +62,7 @@ export default function MeterTable({
   const pathname = usePathname();
   const [editingRecord, setEditingRecord] = useState<MeterRecord | null>(null);
   const [showUpload, setShowUpload] = useState(false);
-  const [showConvert, setShowConvert] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [searchInput, setSearchInput] = useState(search);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -71,6 +71,42 @@ export default function MeterTable({
     setIsRefreshing(true);
     router.refresh();
     setTimeout(() => setIsRefreshing(false), 800);
+  }
+
+  async function handleDownload() {
+    setIsDownloading(true);
+    try {
+      const rows = await getCompletedRecords();
+      const headers = ['블록', '도면번호', '성명', '도로명주소', '기물번호(기존)', '기물번호', '지침', '봉인유무', '위치', '사용형태', '층수', '비고', '조사일자', '보호통뚜껑양식', '상태'];
+      const sheetData = [
+        headers,
+        ...rows.map((r) => [
+          r.block,
+          r.row_no ?? '',
+          r.name ?? '',
+          r.address ?? '',
+          r.old_meter_number ?? '',
+          r.meter_number ?? '',
+          r.reading ?? '',
+          r.sealed ?? '',
+          r.location ?? '',
+          r.usage_type ?? '',
+          r.floor ?? '',
+          r.note ?? '',
+          r.survey_date ?? '',
+          r.cover_type ?? '',
+          r.note === '호폐' ? '호폐' : '처리됨',
+        ]),
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(sheetData);
+      ws['!cols'] = headers.map((h) => ({ wch: Math.max(h.length * 2, 12) }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '처리결과');
+      const today = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `야장결과_${today}.xlsx`);
+    } finally {
+      setIsDownloading(false);
+    }
   }
 
   function copyAddress(r: MeterRecord) {
@@ -172,12 +208,15 @@ export default function MeterTable({
             <span className="hidden sm:inline">새로고침</span>
           </button>
           <button
-            onClick={() => setShowConvert(true)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-zinc-700 text-zinc-200 font-semibold text-sm rounded-lg hover:bg-zinc-600 transition-colors"
+            onClick={handleDownload}
+            disabled={isDownloading}
+            className="flex items-center gap-1.5 px-4 py-2 bg-zinc-700 text-zinc-200 font-semibold text-sm rounded-lg hover:bg-zinc-600 disabled:opacity-50 transition-colors"
           >
-            <Download size={14} />
-            <span className="hidden sm:inline">엑셀 컨버팅</span>
-            <span className="sm:hidden">컨버팅</span>
+            {isDownloading
+              ? <RefreshCw size={14} className="animate-spin" />
+              : <Download size={14} />}
+            <span className="hidden sm:inline">{isDownloading ? '다운로드 중...' : '결과 다운로드'}</span>
+            <span className="sm:hidden">{isDownloading ? '...' : '다운로드'}</span>
           </button>
           <button
             onClick={() => setShowUpload(true)}
@@ -523,7 +562,6 @@ export default function MeterTable({
         <MeterEditModal record={editingRecord} onClose={() => setEditingRecord(null)} />
       )}
       {showUpload && <MeterExcelUpload onClose={() => setShowUpload(false)} />}
-      {showConvert && <MeterExcelConvert onClose={() => setShowConvert(false)} />}
     </div>
   );
 }
