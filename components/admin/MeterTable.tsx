@@ -62,7 +62,12 @@ export default function MeterTable({
   const pathname = usePathname();
   const [editingRecord, setEditingRecord] = useState<MeterRecord | null>(null);
   const [showUpload, setShowUpload] = useState(false);
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [downloadDateFrom, setDownloadDateFrom] = useState('');
+  const [downloadDateTo, setDownloadDateTo] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isImageDownloading, setIsImageDownloading] = useState(false);
+  const [imageProgress, setImageProgress] = useState<{ current: number; total: number } | null>(null);
   const [searchInput, setSearchInput] = useState(search);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -73,28 +78,20 @@ export default function MeterTable({
     setTimeout(() => setIsRefreshing(false), 800);
   }
 
-  async function handleDownload() {
+  async function handleDownload(dateFrom?: string, dateTo?: string) {
     setIsDownloading(true);
     try {
-      const rows = await getCompletedRecords();
-      const headers = ['블록', '도면번호', '성명', '도로명주소', '기물번호(기존)', '기물번호', '지침', '봉인유무', '위치', '사용형태', '층수', '비고', '조사일자', '보호통뚜껑양식', '상태'];
+      const rows = await getCompletedRecords(dateFrom, dateTo);
+      if (rows.length === 0) { alert('해당 기간에 처리된 데이터가 없습니다.'); return; }
+      const headers = ['블록', '도면번호', '성명', '도로명주소', '기물번호(기존)', '기물번호', '지침', '봉인유무', '위치', '사용형태', '층수', '비고', '조사일자', '보호통뚜껑양식', '급수방식', '계량기상태', '상태'];
       const sheetData = [
         headers,
         ...rows.map((r) => [
-          r.block,
-          r.row_no ?? '',
-          r.name ?? '',
-          r.address ?? '',
-          r.old_meter_number ?? '',
-          r.meter_number ?? '',
-          r.reading ?? '',
-          r.sealed ?? '',
-          r.location ?? '',
-          r.usage_type ?? '',
-          r.floor ?? '',
-          r.note ?? '',
-          r.survey_date ?? '',
-          r.cover_type ?? '',
+          r.block, r.row_no ?? '', r.name ?? '', r.address ?? '',
+          r.old_meter_number ?? '', r.meter_number ?? '', r.reading ?? '',
+          r.sealed ?? '', r.location ?? '', r.usage_type ?? '', r.floor ?? '',
+          r.note ?? '', r.survey_date?.slice(0, 10) ?? '', r.cover_type ?? '',
+          r.water_supply_type ?? '', r.meter_condition ?? '',
           r.note === '호폐' ? '호폐' : '처리됨',
         ]),
       ];
@@ -102,10 +99,75 @@ export default function MeterTable({
       ws['!cols'] = headers.map((h) => ({ wch: Math.max(h.length * 2, 12) }));
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, '처리결과');
-      const today = new Date().toISOString().slice(0, 10);
-      XLSX.writeFile(wb, `야장결과_${today}.xlsx`);
+      const label = dateFrom && dateTo ? `${dateFrom}~${dateTo}` : (dateFrom ?? dateTo ?? new Date().toISOString().slice(0, 10));
+      XLSX.writeFile(wb, `야장결과_${label}.xlsx`);
     } finally {
       setIsDownloading(false);
+    }
+  }
+
+  async function handleImageDownload(dateFrom?: string, dateTo?: string) {
+    if (!('showSaveFilePicker' in window)) {
+      alert('이 기능은 Chrome 또는 Edge 브라우저에서만 사용 가능합니다.');
+      return;
+    }
+    setIsImageDownloading(true);
+    try {
+      const params = new URLSearchParams();
+      if (dateFrom) params.set('dateFrom', dateFrom);
+      if (dateTo) params.set('dateTo', dateTo);
+      const listRes = await fetch(`/admin/api/image-list?${params}`);
+      if (!listRes.ok) { alert(await listRes.text()); return; }
+      const images: { path: string; filename: string }[] = await listRes.json();
+      if (images.length === 0) { alert('해당 기간에 이미지가 없습니다.'); return; }
+
+      const label = dateFrom && dateTo
+        ? `${dateFrom}~${dateTo}`
+        : (dateFrom ?? dateTo ?? new Date().toISOString().slice(0, 10));
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const fileHandle = await (window as any).showSaveFilePicker({
+        suggestedName: `야장이미지_${label}.zip`,
+        types: [{ description: 'ZIP 파일', accept: { 'application/zip': ['.zip'] } }],
+      });
+      const writable = await fileHandle.createWritable();
+
+      const { Zip, ZipDeflate } = await import('fflate');
+
+      let zipCtrl: ReadableStreamDefaultController<Uint8Array>;
+      const zipStream = new ReadableStream<Uint8Array>({ start(c) { zipCtrl = c; } });
+      const pipePromise = zipStream.pipeTo(writable);
+
+      const zip = new Zip((err, data, final) => {
+        if (err) { zipCtrl.error(err); return; }
+        zipCtrl.enqueue(data);
+        if (final) zipCtrl.close();
+      });
+
+      setImageProgress({ current: 0, total: images.length });
+      for (let i = 0; i < images.length; i++) {
+        const { path, filename } = images[i];
+        const res = await fetch(`/admin/api/image-proxy?path=${encodeURIComponent(path)}`);
+        if (res.ok && res.body) {
+          const zipFile = new ZipDeflate(filename, { level: 0 });
+          zip.add(zipFile);
+          const reader = res.body.getReader();
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) { zipFile.push(new Uint8Array(0), true); break; }
+            zipFile.push(value, false);
+          }
+        }
+        setImageProgress({ current: i + 1, total: images.length });
+      }
+
+      zip.end();
+      await pipePromise;
+    } catch (e) {
+      if ((e as Error)?.name !== 'AbortError') alert('이미지 다운로드 중 오류가 발생했습니다.');
+    } finally {
+      setIsImageDownloading(false);
+      setImageProgress(null);
     }
   }
 
@@ -208,15 +270,12 @@ export default function MeterTable({
             <span className="hidden sm:inline">새로고침</span>
           </button>
           <button
-            onClick={handleDownload}
-            disabled={isDownloading}
-            className="flex items-center gap-1.5 px-4 py-2 bg-zinc-700 text-zinc-200 font-semibold text-sm rounded-lg hover:bg-zinc-600 disabled:opacity-50 transition-colors"
+            onClick={() => setShowDownloadModal(true)}
+            className="flex items-center gap-1.5 px-4 py-2 bg-zinc-700 text-zinc-200 font-semibold text-sm rounded-lg hover:bg-zinc-600 transition-colors"
           >
-            {isDownloading
-              ? <RefreshCw size={14} className="animate-spin" />
-              : <Download size={14} />}
-            <span className="hidden sm:inline">{isDownloading ? '다운로드 중...' : '결과 다운로드'}</span>
-            <span className="sm:hidden">{isDownloading ? '...' : '다운로드'}</span>
+            <Download size={14} />
+            <span className="hidden sm:inline">다운로드</span>
+            <span className="sm:hidden">다운로드</span>
           </button>
           <button
             onClick={() => setShowUpload(true)}
@@ -330,6 +389,8 @@ export default function MeterTable({
                     <span className="flex items-center gap-1">조사일자 <SortIcon col="survey_date" /></span>
                   </th>
                   <th className="px-3 py-2.5 text-left font-semibold text-zinc-300 whitespace-nowrap">보호통뚜껑양식</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-zinc-300 whitespace-nowrap">급수방식</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-zinc-300 whitespace-nowrap">계량기상태</th>
                 </tr>
               </thead>
               <tbody>
@@ -374,6 +435,8 @@ export default function MeterTable({
                     <td className="px-3 py-2 whitespace-nowrap"><Val value={r.note} /></td>
                     <td className="px-3 py-2 font-mono whitespace-nowrap"><Val value={r.survey_date} /></td>
                     <td className="px-3 py-2 whitespace-nowrap"><Val value={r.cover_type} /></td>
+                    <td className="px-3 py-2 whitespace-nowrap"><Val value={r.water_supply_type} /></td>
+                    <td className="px-3 py-2 whitespace-nowrap"><Val value={r.meter_condition} /></td>
                   </tr>
                 ))}
               </tbody>
@@ -478,6 +541,8 @@ export default function MeterTable({
                           { label: '층수', value: r.floor },
                           { label: '비고', value: r.note },
                           { label: '보호통뚜껑양식', value: r.cover_type },
+                          { label: '급수방식', value: r.water_supply_type },
+                          { label: '계량기상태', value: r.meter_condition },
                         ].map(({ label, value }) =>
                           value ? (
                             <div key={label}>
@@ -558,6 +623,71 @@ export default function MeterTable({
         </>
       )}
 
+      {showDownloadModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowDownloadModal(false)}>
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 w-80 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-semibold text-sm">다운로드</h3>
+              <button onClick={() => setShowDownloadModal(false)} className="text-zinc-500 hover:text-white transition-colors">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="mb-4">
+              <p className="text-xs text-zinc-400 mb-2">날짜 범위 (비우면 전체)</p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={downloadDateFrom}
+                  max={downloadDateTo || undefined}
+                  onChange={(e) => setDownloadDateFrom(e.target.value)}
+                  className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-400 transition-colors"
+                />
+                <span className="text-zinc-600 text-xs shrink-0">~</span>
+                <input
+                  type="date"
+                  value={downloadDateTo}
+                  min={downloadDateFrom || undefined}
+                  onChange={(e) => setDownloadDateTo(e.target.value)}
+                  className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-400 transition-colors"
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={async () => { setShowDownloadModal(false); await handleDownload(downloadDateFrom || undefined, downloadDateTo || undefined); }}
+                disabled={isDownloading}
+                className="flex items-center justify-center gap-2 w-full py-2.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 font-semibold text-sm rounded-lg disabled:opacity-50 transition-colors"
+              >
+                {isDownloading ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />}
+                엑셀 다운로드
+              </button>
+              <button
+                onClick={async () => { setShowDownloadModal(false); await handleImageDownload(downloadDateFrom || undefined, downloadDateTo || undefined); }}
+                disabled={isImageDownloading}
+                className="flex items-center justify-center gap-2 w-full py-2.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 font-semibold text-sm rounded-lg disabled:opacity-50 transition-colors"
+              >
+                {isImageDownloading ? <RefreshCw size={14} className="animate-spin" /> : <Camera size={14} />}
+                이미지 ZIP 다운로드
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {imageProgress && (
+        <div className="fixed bottom-4 right-4 z-50 bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 shadow-2xl w-64">
+          <div className="flex items-center gap-2 mb-2">
+            <RefreshCw size={13} className="animate-spin text-emerald-400 shrink-0" />
+            <p className="text-sm text-white font-semibold">이미지 ZIP 생성 중</p>
+          </div>
+          <p className="text-xs text-zinc-400 mb-2">{imageProgress.current} / {imageProgress.total}개 완료</p>
+          <div className="h-1.5 bg-zinc-700 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-emerald-400 rounded-full transition-all duration-200"
+              style={{ width: `${(imageProgress.current / imageProgress.total) * 100}%` }}
+            />
+          </div>
+        </div>
+      )}
       {editingRecord && (
         <MeterEditModal record={editingRecord} onClose={() => setEditingRecord(null)} />
       )}

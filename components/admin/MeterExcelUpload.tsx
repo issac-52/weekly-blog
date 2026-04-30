@@ -19,6 +19,8 @@ const EXCEL_MAP: Record<string, keyof MeterInsert> = {
   '__EMPTY_8': 'meter_number',     // 기물번호(신규)
   '__EMPTY_13': 'reading',         // 지침
   '__EMPTY_14': 'sealed',          // 봉인유무
+  '__EMPTY_15': 'meter_condition', // 계량기 상태
+  '__EMPTY_16': 'cover_type',      // 보호통 상태 = 보호통뚜껑양식
   '__EMPTY_17': 'location',        // 위치
   '__EMPTY_23': 'usage_type',      // 사용형태
   '__EMPTY_26': 'floor',           // 층수
@@ -88,6 +90,14 @@ export default function MeterExcelUpload({ onClose }: Props) {
               (row as Record<string, unknown>)[dbKey] = val;
             }
           }
+          // 급수방식: 3개 컬럼 → 1개 필드
+          const wDirect = r['__EMPTY_19'] != null && String(r['__EMPTY_19']).trim() ? String(r['__EMPTY_19']).trim() : null;
+          const wTank   = r['__EMPTY_20'] != null && String(r['__EMPTY_20']).trim() ? String(r['__EMPTY_20']).trim() : null;
+          const wCist   = r['__EMPTY_21'] != null && String(r['__EMPTY_21']).trim() ? String(r['__EMPTY_21']).trim() : null;
+          if (wDirect) row.water_supply_type = wDirect;
+          else if (wTank) row.water_supply_type = '물탱크';
+          else if (wCist) row.water_supply_type = '저수조';
+          else row.water_supply_type = null;
           return row as MeterInsert;
         });
 

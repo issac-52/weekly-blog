@@ -10,18 +10,22 @@ const viewUrl = (path: string) => `${STORAGE_BASE}/${path}`;
 
 const LOCATION_OPTIONS = [
   '',
-  '건물 앞(내부)',
-  '건물 앞(외부)',
-  '건물 좌(내부)',
-  '건물 좌(외부)',
-  '건물 우(내부)',
-  '건물 우(외부)',
-  '건물 뒤(내부)',
-  '건물 뒤(외부)',
+  '건물 앞(옥내)',
+  '건물 앞(옥외)',
+  '건물 좌(옥내)',
+  '건물 좌(옥외)',
+  '건물 우(옥내)',
+  '건물 우(옥외)',
+  '건물 뒤(옥내)',
+  '건물 뒤(옥외)',
   '기타',
 ];
 
 const COVER_OPTIONS = ['', '뚜껑 파손', '뚜껑 없음', '없음'];
+
+const WATER_SUPPLY_OPTIONS = ['직접', '간접', '물탱크', '저수조'];
+
+const METER_CONDITION_OPTIONS = ['', '초파', '녹폐', '정상'];
 
 const USAGE_TYPES = ['가정집', '상가', '주상복합', '빌라', '공공기관', '기타'];
 
@@ -249,6 +253,8 @@ export default function MeterEditModal({ record, onClose }: Props) {
     note: record.note,
     survey_date: nowString(),
     cover_type: record.cover_type ?? '',
+    water_supply_type: record.water_supply_type ?? null,
+    meter_condition: record.meter_condition ?? null,
   });
   const [image1Id, setImage1Id] = useState<string | null>(record.image1_id);
   const [image2Id, setImage2Id] = useState<string | null>(record.image2_id);
@@ -285,6 +291,8 @@ export default function MeterEditModal({ record, onClose }: Props) {
         floor: values.floor || null,
         note: values.note || null,
         cover_type: values.cover_type || null,
+        water_supply_type: values.water_supply_type || null,
+        meter_condition: values.meter_condition || null,
       };
       const result = await updateMeterRecord(record.id, payload);
       if (result.error) {
@@ -578,6 +586,70 @@ export default function MeterEditModal({ record, onClose }: Props) {
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* 급수방식 */}
+          <div>
+            <label className={labelCls}>급수방식</label>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => set('water_supply_type', null)}
+                className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+                  !values.water_supply_type
+                    ? 'bg-zinc-600 border-zinc-500 text-white'
+                    : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
+                }`}
+              >
+                미선택
+              </button>
+              {WATER_SUPPLY_OPTIONS.map((o) => (
+                <button
+                  key={o}
+                  type="button"
+                  onClick={() => set('water_supply_type', o)}
+                  className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+                    values.water_supply_type === o
+                      ? 'bg-emerald-400 border-emerald-400 text-zinc-950 font-semibold'
+                      : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  {o}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 계량기 상태 */}
+          <div>
+            <label className={labelCls}>계량기 상태</label>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => set('meter_condition', null)}
+                className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+                  !values.meter_condition
+                    ? 'bg-zinc-600 border-zinc-500 text-white'
+                    : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
+                }`}
+              >
+                미선택
+              </button>
+              {METER_CONDITION_OPTIONS.filter(Boolean).map((o) => (
+                <button
+                  key={o}
+                  type="button"
+                  onClick={() => set('meter_condition', o)}
+                  className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+                    values.meter_condition === o
+                      ? 'bg-emerald-400 border-emerald-400 text-zinc-950 font-semibold'
+                      : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  {o}
+                </button>
+              ))}
+            </div>
           </div>
 
         </div>

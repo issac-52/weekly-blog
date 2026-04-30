@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['googleapis'],
+  serverExternalPackages: ['googleapis', 'exceljs'],
   images: {
     remotePatterns: [
       {

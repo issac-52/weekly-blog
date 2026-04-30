@@ -20,6 +20,8 @@ export type MeterRecord = {
   note: string | null;
   survey_date: string | null;
   cover_type: string | null;
+  water_supply_type: string | null;
+  meter_condition: string | null;
   image1_id: string | null;
   image2_id: string | null;
   created_at: string;
@@ -148,6 +150,18 @@ export async function deleteMeterRecord(id: number) {
   return { success: true };
 }
 
+export async function getMeterRecordsWithSurveyData(): Promise<MeterRecord[]> {
+  await requireAuth();
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from('meter_records')
+    .select('*')
+    .or('meter_number.not.is.null,reading.not.is.null,sealed.not.is.null,note.eq.호폐')
+    .order('block', { ascending: true })
+    .order('row_no', { ascending: true, nullsFirst: false });
+  return (data ?? []) as MeterRecord[];
+}
+
 export async function getMeterRecordsForExport(blocks: string[]): Promise<MeterRecord[]> {
   await requireAuth();
   const admin = createAdminClient();
@@ -158,20 +172,42 @@ export async function getMeterRecordsForExport(blocks: string[]): Promise<MeterR
   return (data ?? []) as MeterRecord[];
 }
 
-export async function getCompletedRecords(): Promise<MeterRecord[]> {
+function nextDay(date: string) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+export async function getCompletedRecords(dateFrom?: string, dateTo?: string): Promise<MeterRecord[]> {
   await requireAuth();
   const admin = createAdminClient();
-  const { data } = await admin
+  let query = admin
     .from('meter_records')
     .select('*')
     .or(
-      // 처리됨: 6개 필드 모두 있고 호폐 아님
       `and(note.is.null,meter_number.not.is.null,reading.not.is.null,sealed.not.is.null,location.not.is.null,usage_type.not.is.null,floor.not.is.null),` +
       `and(note.neq.호폐,meter_number.not.is.null,reading.not.is.null,sealed.not.is.null,location.not.is.null,usage_type.not.is.null,floor.not.is.null),` +
-      // 호폐
       `note.eq.호폐`
     )
     .order('block', { ascending: true })
     .order('row_no', { ascending: true, nullsFirst: false });
+  if (dateFrom) query = query.gte('survey_date', dateFrom);
+  if (dateTo) query = query.lt('survey_date', nextDay(dateTo));
+  const { data } = await query;
   return (data ?? []) as MeterRecord[];
+}
+
+export async function getRecordsWithImages(dateFrom?: string, dateTo?: string): Promise<Pick<MeterRecord, 'id' | 'block' | 'row_no' | 'image1_id' | 'image2_id' | 'survey_date'>[]> {
+  await requireAuth();
+  const admin = createAdminClient();
+  let query = admin
+    .from('meter_records')
+    .select('id, block, row_no, image1_id, image2_id, survey_date')
+    .or('image1_id.not.is.null,image2_id.not.is.null')
+    .order('block', { ascending: true })
+    .order('row_no', { ascending: true, nullsFirst: false });
+  if (dateFrom) query = query.gte('survey_date', dateFrom);
+  if (dateTo) query = query.lt('survey_date', nextDay(dateTo));
+  const { data } = await query;
+  return (data ?? []) as Pick<MeterRecord, 'id' | 'block' | 'row_no' | 'image1_id' | 'image2_id' | 'survey_date'>[];
 }

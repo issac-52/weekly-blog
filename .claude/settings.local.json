@@ -25,7 +25,12 @@
       "Bash(node -e ' *)",
       "Bash(npm uninstall *)",
       "Bash(npx create-expo-app *)",
-      "Bash(npx expo *)"
+      "Bash(npx expo *)",
+      "Bash(npm list *)",
+      "Bash(node -e \"const pkg = require\\('./package.json'\\); console.log\\('xlsx:', pkg.dependencies.xlsx || pkg.devDependencies.xlsx\\)\")",
+      "Bash(node -e \"const pkg = require\\('./package.json'\\); const deps = {...pkg.dependencies, ...pkg.devDependencies}; console.log\\('exceljs:', deps.exceljs ?? 'not installed'\\)\")",
+      "Bash(powershell -Command \"\\(Get-Item '수용가조사기록지 및 조서-2026.03.06.xlsx'\\).Length / 1MB\")",
+      "Bash(node -e \"console.log\\(require\\('./package.json'\\).dependencies.next\\)\")"
     ]
   }
 }
