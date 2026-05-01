@@ -9,6 +9,8 @@ export default function MeterTemplateFill() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<{ filled: number } | null>(null);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -36,6 +38,8 @@ export default function MeterTemplateFill() {
     try {
       const formData = new FormData();
       formData.append('file', file);
+      if (dateFrom) formData.append('dateFrom', dateFrom);
+      if (dateTo)   formData.append('dateTo', dateTo);
 
       const res = await fetch('/admin/api/template-fill', {
         method: 'POST',
@@ -92,6 +96,42 @@ export default function MeterTemplateFill() {
           </button>
         )}
         <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleFile} className="hidden" />
+      </div>
+
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-xs font-semibold text-zinc-400">날짜 필터 (선택)</p>
+          {(dateFrom || dateTo) && (
+            <button
+              onClick={() => { setDateFrom(''); setDateTo(''); }}
+              className="text-xs text-zinc-500 hover:text-white transition-colors"
+            >
+              초기화
+            </button>
+          )}
+        </div>
+        <p className="text-xs text-zinc-600 mb-3">비워두면 전체 날짜의 완료 데이터를 채웁니다</p>
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <label className="block text-xs text-zinc-500 mb-1">시작일</label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-400 [color-scheme:dark]"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="block text-xs text-zinc-500 mb-1">종료일</label>
+            <input
+              type="date"
+              value={dateTo}
+              min={dateFrom}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-400 [color-scheme:dark]"
+            />
+          </div>
+        </div>
       </div>
 
       {error && (
