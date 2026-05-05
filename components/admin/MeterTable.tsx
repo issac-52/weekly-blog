@@ -411,11 +411,11 @@ export default function MeterTable({
                       <div className="flex items-center gap-2 px-2 mt-0.5">
                         {getStatus(r) === 'processed' && <span className="text-[10px] text-emerald-400 font-bold">✓</span>}
                         {getStatus(r) === 'closed' && <span className="text-[10px] text-amber-400 font-bold">호폐</span>}
-                        {(r.image1_id || r.image2_id) && (
+                        {(r.image1_id || r.image2_id || r.image3_id) && (
                           <span className="flex items-center gap-1">
                             <Camera size={10} className="text-emerald-400" />
                             <span className="text-[10px] text-emerald-400">
-                              {[r.image1_id, r.image2_id].filter(Boolean).length}
+                              {[r.image1_id, r.image2_id, r.image3_id].filter(Boolean).length}
                             </span>
                           </span>
                         )}
@@ -496,10 +496,10 @@ export default function MeterTable({
                         <p className="text-zinc-600 text-xs mt-0.5">{r.name ?? '-'}</p>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        {(r.image1_id || r.image2_id) && (
+                        {(r.image1_id || r.image2_id || r.image3_id) && (
                           <span className="flex items-center gap-1 text-emerald-400">
                             <Camera size={12} />
-                            <span className="text-xs">{[r.image1_id, r.image2_id].filter(Boolean).length}</span>
+                            <span className="text-xs">{[r.image1_id, r.image2_id, r.image3_id].filter(Boolean).length}</span>
                           </span>
                         )}
                         {r.address && (

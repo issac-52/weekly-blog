@@ -24,6 +24,7 @@ export type MeterRecord = {
   meter_condition: string | null;
   image1_id: string | null;
   image2_id: string | null;
+  image3_id: string | null;
   created_at: string;
 };
 
@@ -197,17 +198,17 @@ export async function getCompletedRecords(dateFrom?: string, dateTo?: string): P
   return (data ?? []) as MeterRecord[];
 }
 
-export async function getRecordsWithImages(dateFrom?: string, dateTo?: string): Promise<Pick<MeterRecord, 'id' | 'block' | 'row_no' | 'image1_id' | 'image2_id' | 'survey_date'>[]> {
+export async function getRecordsWithImages(dateFrom?: string, dateTo?: string): Promise<Pick<MeterRecord, 'id' | 'block' | 'row_no' | 'image1_id' | 'image2_id' | 'image3_id' | 'survey_date'>[]> {
   await requireAuth();
   const admin = createAdminClient();
   let query = admin
     .from('meter_records')
-    .select('id, block, row_no, image1_id, image2_id, survey_date')
-    .or('image1_id.not.is.null,image2_id.not.is.null')
+    .select('id, block, row_no, image1_id, image2_id, image3_id, survey_date')
+    .or('image1_id.not.is.null,image2_id.not.is.null,image3_id.not.is.null')
     .order('block', { ascending: true })
     .order('row_no', { ascending: true, nullsFirst: false });
   if (dateFrom) query = query.gte('survey_date', dateFrom);
   if (dateTo) query = query.lt('survey_date', nextDay(dateTo));
   const { data } = await query;
-  return (data ?? []) as Pick<MeterRecord, 'id' | 'block' | 'row_no' | 'image1_id' | 'image2_id' | 'survey_date'>[];
+  return (data ?? []) as Pick<MeterRecord, 'id' | 'block' | 'row_no' | 'image1_id' | 'image2_id' | 'image3_id' | 'survey_date'>[];
 }

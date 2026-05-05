@@ -46,7 +46,7 @@ const inputCls =
 const selectCls =
   'w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-base md:text-sm text-white focus:outline-none focus:border-emerald-400 transition-colors';
 
-type ImageSlot = 1 | 2;
+type ImageSlot = 1 | 2 | 3;
 
 function ImageSlotCard({
   slot,
@@ -258,6 +258,7 @@ export default function MeterEditModal({ record, onClose }: Props) {
   });
   const [image1Id, setImage1Id] = useState<string | null>(record.image1_id);
   const [image2Id, setImage2Id] = useState<string | null>(record.image2_id);
+  const [image3Id, setImage3Id] = useState<string | null>(record.image3_id);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -305,15 +306,17 @@ export default function MeterEditModal({ record, onClose }: Props) {
 
   function handleImageUploaded(slot: ImageSlot, newFileId: string) {
     if (slot === 1) setImage1Id(newFileId);
-    else setImage2Id(newFileId);
+    else if (slot === 2) setImage2Id(newFileId);
+    else setImage3Id(newFileId);
   }
 
   function handleImageDeleted(slot: ImageSlot) {
     if (slot === 1) setImage1Id(null);
-    else setImage2Id(null);
+    else if (slot === 2) setImage2Id(null);
+    else setImage3Id(null);
   }
 
-  const imageCount = [image1Id, image2Id].filter(Boolean).length;
+  const imageCount = [image1Id, image2Id, image3Id].filter(Boolean).length;
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-end md:items-center justify-center z-50 p-0 md:p-4">
@@ -403,9 +406,9 @@ export default function MeterEditModal({ record, onClose }: Props) {
           <div>
             <label className={labelCls}>
               이미지
-              <span className="ml-1.5 font-normal text-zinc-600">(최대 2장, 즉시 저장)</span>
+              <span className="ml-1.5 font-normal text-zinc-600">(최대 3장, 즉시 저장)</span>
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <ImageSlotCard
                 slot={1}
                 fileId={image1Id}
@@ -417,6 +420,14 @@ export default function MeterEditModal({ record, onClose }: Props) {
               <ImageSlotCard
                 slot={2}
                 fileId={image2Id}
+                rowNo={record.row_no}
+                recordId={record.id}
+                onUploaded={handleImageUploaded}
+                onDeleted={handleImageDeleted}
+              />
+              <ImageSlotCard
+                slot={3}
+                fileId={image3Id}
                 rowNo={record.row_no}
                 recordId={record.id}
                 onUploaded={handleImageUploaded}
