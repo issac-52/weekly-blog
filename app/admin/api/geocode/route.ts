@@ -18,11 +18,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Naver API keys not configured' }, { status: 500 });
   }
 
-  const url = `https://naveropenapi.apigw.ntruss.com/map-geocode/v2/geocode?query=${encodeURIComponent(address)}`;
+  const url = `https://maps.apigw.ntruss.com/map-geocode/v2/geocode?query=${encodeURIComponent(address)}`;
   const res = await fetch(url, {
     headers: {
-      'X-NCP-APIGW-API-KEY-ID': clientId,
-      'X-NCP-APIGW-API-KEY': clientSecret,
+      'x-ncp-apigw-api-key-id': clientId,
+      'x-ncp-apigw-api-key': clientSecret,
     },
   });
 

@@ -52,34 +52,25 @@ export default function MeterMapView({
   const [locating, setLocating] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Naver Maps SDK 로드 — onload 후 window.naver.maps 가용 여부를 폴링으로 확인
+  // Naver Maps SDK 로드
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (naverMaps()) { setSdkReady(true); return; }
 
-    let poll: ReturnType<typeof setInterval>;
+    // 콜백 등록 (클린업으로 지우지 않음 — strict mode 이중 실행 대응)
+    (window as any).__naverMapReady = () => setSdkReady(true);
 
-    function startPolling() {
-      poll = setInterval(() => {
-        if (naverMaps()) {
-          setSdkReady(true);
-          clearInterval(poll);
-        }
-      }, 100);
+    if (!document.querySelector('script[data-naver-maps]')) {
+      const script = document.createElement('script');
+      script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_CLIENT_ID}&callback=__naverMapReady`;
+      script.setAttribute('data-naver-maps', '');
+      document.head.appendChild(script);
     }
 
-    const existing = document.querySelector('script[data-naver-maps]');
-    if (existing) {
-      startPolling();
-      return () => clearInterval(poll);
-    }
-
-    const script = document.createElement('script');
-    script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${process.env.NEXT_PUBLIC_NAVER_CLIENT_ID}`;
-    script.setAttribute('data-naver-maps', '');
-    script.onload = startPolling;
-    document.head.appendChild(script);
-
+    // 콜백이 누락될 경우를 대비한 폴링 fallback
+    const poll = setInterval(() => {
+      if (naverMaps()) { setSdkReady(true); clearInterval(poll); }
+    }, 150);
     return () => clearInterval(poll);
   }, []);
 
