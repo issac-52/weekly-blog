@@ -70,13 +70,17 @@ CREATE TABLE IF NOT EXISTS public.meter_records (
   image1_id         text,                -- Supabase Storage 파일 경로 (이미지 1)
   image2_id         text,                -- Supabase Storage 파일 경로 (이미지 2)
   image3_id         text,                -- Supabase Storage 파일 경로 (이미지 3)
+  lat               double precision,    -- 위도 (지오코딩)
+  lng               double precision,    -- 경도 (지오코딩)
   created_at        timestamptz NOT NULL DEFAULT now()
 );
 
--- 기존 DB에 이미지 컬럼 추가 시:
+-- 기존 DB에 컬럼 추가 시:
 -- ALTER TABLE public.meter_records ADD COLUMN IF NOT EXISTS image1_id TEXT;
 -- ALTER TABLE public.meter_records ADD COLUMN IF NOT EXISTS image2_id TEXT;
 -- ALTER TABLE public.meter_records ADD COLUMN IF NOT EXISTS image3_id TEXT;
+-- ALTER TABLE public.meter_records ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION;
+-- ALTER TABLE public.meter_records ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION;
 
 CREATE INDEX IF NOT EXISTS meter_records_block_idx ON public.meter_records (block);
 

@@ -25,6 +25,8 @@ export type MeterRecord = {
   image1_id: string | null;
   image2_id: string | null;
   image3_id: string | null;
+  lat: number | null;
+  lng: number | null;
   created_at: string;
 };
 
@@ -211,4 +213,42 @@ export async function getRecordsWithImages(dateFrom?: string, dateTo?: string): 
   if (dateTo) query = query.lt('survey_date', nextDay(dateTo));
   const { data } = await query;
   return (data ?? []) as Pick<MeterRecord, 'id' | 'block' | 'row_no' | 'image1_id' | 'image2_id' | 'image3_id' | 'survey_date'>[];
+}
+
+export async function getMeterRecordsForMap(block?: string, status?: StatusFilter): Promise<MeterRecord[]> {
+  await requireAuth();
+  const admin = createAdminClient();
+  let query = admin
+    .from('meter_records')
+    .select('*')
+    .not('lat', 'is', null)
+    .not('lng', 'is', null)
+    .order('block', { ascending: true })
+    .order('row_no', { ascending: true, nullsFirst: false });
+  if (block) query = query.eq('block', block);
+  if (status === 'closed') {
+    query = query.eq('note', '호폐');
+  } else if (status === 'processed') {
+    query = query.or(NOT_CLOSED)
+      .not('meter_number', 'is', null).not('reading', 'is', null)
+      .not('sealed', 'is', null).not('location', 'is', null)
+      .not('usage_type', 'is', null).not('floor', 'is', null);
+  } else if (status === 'unprocessed') {
+    query = query.or(NOT_CLOSED).or(ANY_EMPTY);
+  }
+  const { data } = await query;
+  return (data ?? []) as MeterRecord[];
+}
+
+export async function getUngeocodedRecords(block?: string): Promise<Pick<MeterRecord, 'id' | 'address'>[]> {
+  await requireAuth();
+  const admin = createAdminClient();
+  let query = admin
+    .from('meter_records')
+    .select('id, address')
+    .or('lat.is.null,lng.is.null')
+    .not('address', 'is', null);
+  if (block) query = query.eq('block', block);
+  const { data } = await query;
+  return (data ?? []) as Pick<MeterRecord, 'id' | 'address'>[];
 }

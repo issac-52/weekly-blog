@@ -2,11 +2,12 @@
 
 import { useState, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Pencil, Upload, Download, ChevronLeft, ChevronRight, Search, X, Camera, ChevronUp, ChevronDown, ChevronsUpDown, Copy, Check, RefreshCw, MapPin } from 'lucide-react';
+import { Pencil, Upload, Download, ChevronLeft, ChevronRight, Search, X, Camera, ChevronUp, ChevronDown, ChevronsUpDown, Copy, Check, RefreshCw, MapPin, List, Map } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { type MeterRecord, type SortCol, type SortDir, type StatusFilter, getCompletedRecords } from '@/app/admin/meter/_actions';
 import MeterExcelUpload from './MeterExcelUpload';
 import MeterEditModal from './MeterEditModal';
+import MeterMapView from './MeterMapView';
 
 type Props = {
   records: MeterRecord[];
@@ -71,6 +72,7 @@ export default function MeterTable({
   const [searchInput, setSearchInput] = useState(search);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
   function handleRefresh() {
     setIsRefreshing(true);
@@ -261,6 +263,23 @@ export default function MeterTable({
           </button>
         ))}
         <div className="ml-auto flex items-center gap-2">
+          {/* 뷰 모드 토글 */}
+          <div className="flex items-center bg-zinc-800 rounded-lg p-0.5">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === 'list' ? 'bg-zinc-600 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+            >
+              <List size={13} />
+              <span className="hidden sm:inline">목록</span>
+            </button>
+            <button
+              onClick={() => setViewMode('map')}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === 'map' ? 'bg-zinc-600 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+            >
+              <Map size={13} />
+              <span className="hidden sm:inline">지도</span>
+            </button>
+          </div>
           <button
             onClick={handleRefresh}
             className="flex items-center gap-1.5 px-3 py-2 bg-zinc-800 text-zinc-400 hover:text-white text-sm rounded-lg hover:bg-zinc-700 transition-colors"
@@ -347,7 +366,10 @@ export default function MeterTable({
         </p>
       )}
 
-      {isEmpty ? (
+      {/* ─── 지도 모드 ─── */}
+      {viewMode === 'map' ? (
+        <MeterMapView selectedBlock={selectedBlock} status={status} />
+      ) : isEmpty ? (
         <div className="flex flex-col items-center justify-center py-20 text-zinc-500 border border-zinc-800 rounded-lg">
           <p className="text-sm">데이터가 없습니다.</p>
           <p className="text-xs mt-1">엑셀 파일을 업로드하여 데이터를 가져오세요.</p>
@@ -469,7 +491,6 @@ export default function MeterTable({
           {/* ─── 모바일 카드 ─── */}
           <div className="md:hidden space-y-2">
             {records.map((r) => {
-              const hasSurvey = !!(r.meter_number || r.reading || r.sealed || r.survey_date);
               const st = getStatus(r);
               const cardCls =
                 st === 'processed' ? 'bg-emerald-950/30 border-emerald-900/60' :
@@ -479,11 +500,11 @@ export default function MeterTable({
                 <div key={r.id} className={`border rounded-xl overflow-hidden ${cardCls}`}>
                   {/* 카드 상단 정보 */}
                   <div className="p-4">
-                    <div className="flex items-start gap-2 mb-1">
+                    <div className="flex items-start gap-2">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
                           {r.row_no && (
-                            <span className="text-zinc-600 text-xs font-mono shrink-0">도면{r.row_no}</span>
+                            <span className="text-zinc-500 text-xs font-mono shrink-0">도면{r.row_no}</span>
                           )}
                           {st === 'processed' && (
                             <span className="shrink-0 text-[10px] font-semibold text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded-full">완료</span>
@@ -491,17 +512,13 @@ export default function MeterTable({
                           {st === 'closed' && (
                             <span className="shrink-0 text-[10px] font-semibold text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded-full">호폐</span>
                           )}
+                          {r.meter_number && (
+                            <span className="text-zinc-300 text-xs font-mono truncate">{r.meter_number}</span>
+                          )}
                         </div>
                         <p className="text-white text-sm font-semibold truncate">{r.address ?? '-'}</p>
-                        <p className="text-zinc-600 text-xs mt-0.5">{r.name ?? '-'}</p>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {(r.image1_id || r.image2_id || r.image3_id) && (
-                          <span className="flex items-center gap-1 text-emerald-400">
-                            <Camera size={12} />
-                            <span className="text-xs">{[r.image1_id, r.image2_id, r.image3_id].filter(Boolean).length}</span>
-                          </span>
-                        )}
+                      <div className="flex items-center gap-1 shrink-0">
                         {r.address && (
                           <>
                             <button
@@ -525,40 +542,6 @@ export default function MeterTable({
                         )}
                       </div>
                     </div>
-                    <p className="text-zinc-500 text-xs font-mono">
-                      기물번호(기존): {r.old_meter_number ?? '-'}
-                    </p>
-
-                    {/* 입력된 데이터 */}
-                    {hasSurvey && (
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-3 pt-3 border-t border-zinc-800">
-                        {[
-                          { label: '기물번호', value: r.meter_number },
-                          { label: '지침', value: r.reading },
-                          { label: '봉인유무', value: r.sealed },
-                          { label: '위치', value: r.location },
-                          { label: '사용형태', value: r.usage_type },
-                          { label: '층수', value: r.floor },
-                          { label: '비고', value: r.note },
-                          { label: '보호통뚜껑양식', value: r.cover_type },
-                          { label: '급수방식', value: r.water_supply_type },
-                          { label: '계량기상태', value: r.meter_condition },
-                        ].map(({ label, value }) =>
-                          value ? (
-                            <div key={label}>
-                              <p className="text-zinc-600 text-xs">{label}</p>
-                              <p className="text-zinc-300 text-xs font-medium">{value}</p>
-                            </div>
-                          ) : null
-                        )}
-                        {r.survey_date && (
-                          <div className="col-span-2">
-                            <p className="text-zinc-600 text-xs">조사일자</p>
-                            <p className="text-zinc-400 text-xs font-mono">{r.survey_date}</p>
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
 
                   {/* 수정 버튼 — 카드 하단 풀너비 */}
