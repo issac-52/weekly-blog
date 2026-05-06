@@ -106,7 +106,8 @@ function setCellStr(
 ): string {
   const ref = col + rowNum;
   const idx = getOrAddSS(ss, ssMap, value);
-  const cellRe = new RegExp(`<c\\b[^>]*\\br="${ref}"[^>]*(?:/>|>[\\s\\S]*?<\\/c>)`);
+  // [^>]*? lazy: '/' in '/>' 를 삼키지 않도록 — self-closing 빈 셀도 정확히 매칭
+  const cellRe = new RegExp(`<c\\b[^>]*\\br="${ref}"[^>]*?(?:/>|>[\\s\\S]*?<\\/c>)`);
   const m = rowXml.match(cellRe);
 
   if (m) {

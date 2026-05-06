@@ -13,8 +13,8 @@ export async function GET(req: NextRequest) {
   const admin = createAdminClient();
   let query = admin
     .from('meter_records')
-    .select('id, block, row_no, image1_id, image2_id, image3_id')
-    .or('image1_id.not.is.null,image2_id.not.is.null,image3_id.not.is.null')
+    .select('id, block, row_no, image1_id, image2_id, image3_id, image4_id')
+    .or('image1_id.not.is.null,image2_id.not.is.null,image3_id.not.is.null,image4_id.not.is.null')
     .order('block', { ascending: true })
     .order('row_no', { ascending: true, nullsFirst: false });
 
@@ -26,11 +26,11 @@ export async function GET(req: NextRequest) {
   }
 
   const { data } = await query;
-  type Row = { id: number; block: string; row_no: string | null; image1_id: string | null; image2_id: string | null; image3_id: string | null };
+  type Row = { id: number; block: string; row_no: string | null; image1_id: string | null; image2_id: string | null; image3_id: string | null; image4_id: string | null };
   const records = (data ?? []) as Row[];
 
   const images = records.flatMap((r) =>
-    ([r.image1_id, r.image2_id, r.image3_id] as (string | null)[]).flatMap((imgId) => {
+    ([r.image1_id, r.image2_id, r.image3_id, r.image4_id] as (string | null)[]).flatMap((imgId) => {
       if (!imgId) return [];
       const filename = imgId.split('/').pop() ?? imgId;
       return [{ path: imgId, filename }];
