@@ -28,7 +28,7 @@ const C = {
 // ─── 대불 형식 컬럼 ────────────────────────────────────────────────────────────
 const DB = {
   ROW_NO:       'A',
-  OLD_METER_NO: 'P',
+  OLD_METER_NO: 'F',  // 계량기번호 (기물번호)
   READING:      'N',
   SEALED:       'O',
   METER_COND:   'T',
@@ -207,11 +207,14 @@ export async function POST(req: NextRequest) {
   if (!wsFile) return new NextResponse('시트를 찾을 수 없습니다', { status: 400 });
   let wsXml = await wsFile.async('string');
 
-  // ── 형식 감지: 대불 형식은 row 4 col P 에 "기물번호" ─────────────────────
+  // ── 형식 감지: 대불 형식은 row 4 col A 에 "번호", row 2 col F 에 "계량기번호" ─
   const row4Match = wsXml.match(/<row\b[^>]*\br="4"[^>]*>[\s\S]*?<\/row>/);
   const row4Xml = row4Match ? row4Match[0] : '';
-  const cellP4 = getCellStr(row4Xml, 'P', 4, ss);
-  const isDaebul = !!cellP4 && cellP4.includes('기물번호');
+  const cellA4 = getCellStr(row4Xml, 'A', 4, ss);
+  const row2Match = wsXml.match(/<row\b[^>]*\br="2"[^>]*>[\s\S]*?<\/row>/);
+  const row2Xml = row2Match ? row2Match[0] : '';
+  const cellF2 = getCellStr(row2Xml, 'F', 2, ss);
+  const isDaebul = (!!cellA4 && cellA4.includes('번호')) || (!!cellF2 && cellF2.includes('계량기번호'));
 
   const DATA_START_ROW = isDaebul ? 5 : 4;
 

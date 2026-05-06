@@ -30,7 +30,7 @@ const DB_COL = {
   ROW_NO: 0,        // A: 번호
   NAME: 2,          // C: 성명
   ADDRESS: 3,       // D: 주소
-  OLD_METER: 15,    // P: 기물번호
+  OLD_METER: 5,     // F: 계량기번호 (기물번호)
   READING: 13,      // N: 지침(금회)
   SEALED: 14,       // O: 봉인유무
   METER_COND: 19,   // T: 수도미터 상태
