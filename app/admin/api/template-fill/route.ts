@@ -194,27 +194,46 @@ export async function POST(req: NextRequest) {
   const ssMap = new Map<string, number>(ss.map((v, i) => [v, i]));
   const origSsLen = ss.length;
 
-  let sheetPath = 'xl/worksheets/sheet1.xml';
+  // ── 시트 경로 결정 + 대불 형식 감지 ─────────────────────────────────────────
+  // workbook.xml에서 시트명 → r:id, rels에서 r:id → 파일경로 매핑
+  const workbookXml = await zip.file('xl/workbook.xml')?.async('string') ?? '';
   const relsXml = await zip.file('xl/_rels/workbook.xml.rels')?.async('string') ?? '';
-  for (const m of relsXml.matchAll(/<Relationship\b[^>]+>/g)) {
-    if (m[0].includes('/worksheet"') || m[0].includes('/worksheet ')) {
-      const t = (m[0].match(/Target="([^"]+)"/) ?? [])[1];
-      if (t) { sheetPath = t.startsWith('/') ? t.slice(1) : `xl/${t}`; break; }
+
+  const sheetRidMap = new Map<string, string>();
+  for (const m of workbookXml.matchAll(/<sheet\b[^>]*/g)) {
+    const name = (m[0].match(/\bname="([^"]+)"/) ?? [])[1];
+    const rid  = (m[0].match(/\br:id="([^"]+)"/) ?? [])[1];
+    if (name && rid) sheetRidMap.set(name, rid);
+  }
+
+  const ridPathMap = new Map<string, string>();
+  for (const m of relsXml.matchAll(/<Relationship\b[^>]*/g)) {
+    const id     = (m[0].match(/\bId="([^"]+)"/) ?? [])[1];
+    const target = (m[0].match(/\bTarget="([^"]+)"/) ?? [])[1];
+    if (id && target) ridPathMap.set(id, target);
+  }
+
+  // "수도미터목록" 시트가 있으면 대불 형식 (5번째 시트라도 정확히 찾음)
+  const daebulRid = sheetRidMap.get('수도미터목록');
+  const isDaebul = !!daebulRid;
+
+  let sheetPath: string;
+  if (isDaebul && daebulRid) {
+    const target = ridPathMap.get(daebulRid) ?? 'worksheets/sheet1.xml';
+    sheetPath = target.startsWith('/') ? target.slice(1) : `xl/${target}`;
+  } else {
+    sheetPath = 'xl/worksheets/sheet1.xml';
+    for (const m of relsXml.matchAll(/<Relationship\b[^>]+>/g)) {
+      if (m[0].includes('/worksheet"') || m[0].includes('/worksheet ')) {
+        const t = (m[0].match(/Target="([^"]+)"/) ?? [])[1];
+        if (t) { sheetPath = t.startsWith('/') ? t.slice(1) : `xl/${t}`; break; }
+      }
     }
   }
 
   const wsFile = zip.file(sheetPath);
   if (!wsFile) return new NextResponse('시트를 찾을 수 없습니다', { status: 400 });
   let wsXml = await wsFile.async('string');
-
-  // ── 형식 감지: 대불 형식은 row 4 col A 에 "번호", row 2 col F 에 "계량기번호" ─
-  const row4Match = wsXml.match(/<row\b[^>]*\br="4"[^>]*>[\s\S]*?<\/row>/);
-  const row4Xml = row4Match ? row4Match[0] : '';
-  const cellA4 = getCellStr(row4Xml, 'A', 4, ss);
-  const row2Match = wsXml.match(/<row\b[^>]*\br="2"[^>]*>[\s\S]*?<\/row>/);
-  const row2Xml = row2Match ? row2Match[0] : '';
-  const cellF2 = getCellStr(row2Xml, 'F', 2, ss);
-  const isDaebul = (!!cellA4 && cellA4.includes('번호')) || (!!cellF2 && cellF2.includes('계량기번호'));
 
   const DATA_START_ROW = isDaebul ? 5 : 4;
 
@@ -243,6 +262,9 @@ export async function POST(req: NextRequest) {
         if (val) row = setCellStr(row, col, rowNum, val, ss, ssMap);
       };
 
+      // 기물번호: O(기존과 동일) → meter_number = old_meter_number, X(직접입력) → 새 값
+      set(DB.OLD_METER_NO, rec.meter_number);
+      set(DB.BLOCK,        rec.block);
       set(DB.READING,      rec.reading);
       set(DB.SEALED,       rec.sealed);
       set(DB.METER_COND,   rec.meter_condition);
