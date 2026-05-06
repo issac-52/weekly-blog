@@ -27,10 +27,11 @@ const C = {
 
 // ─── 대불 형식 컬럼 ────────────────────────────────────────────────────────────
 const DB = {
-  ROW_NO:       'A',
-  OLD_METER_NO: 'F',  // 계량기번호 (기존)
-  METER_NO:     'P',  // 기물번호 (신규 입력값)
-  READING:      'N',
+  ROW_NO:         'A',
+  OLD_METER_NO:   'F',  // 계량기번호 (기존)
+  METER_NO:       'P',  // 기물번호 (신규 입력값)
+  WATER_PRESSURE: 'M',  // 수압(도면) - 측정 수압 입력
+  READING:        'N',
   SEALED:       'O',
   METER_COND:   'T',
   MANUFACTURER: 'U',
@@ -264,10 +265,11 @@ export async function POST(req: NextRequest) {
         if (val) row = setCellStr(row, col, rowNum, val, ss, ssMap);
       };
 
-      set(DB.OLD_METER_NO, rec.old_meter_number); // F: 기존 계량기번호
-      set(DB.METER_NO,     rec.meter_number);     // P: 확인된 기물번호 (O=기존과동일, X=새값)
-      set(DB.BLOCK,        rec.block);
-      set(DB.READING,      rec.reading);
+      set(DB.OLD_METER_NO,   rec.old_meter_number);
+      set(DB.METER_NO,       rec.meter_number);
+      set(DB.WATER_PRESSURE, rec.water_pressure);
+      set(DB.BLOCK,          rec.block);
+      set(DB.READING,        rec.reading);
       set(DB.SEALED,       rec.sealed);
       set(DB.METER_COND,   rec.meter_condition);
       set(DB.MANUFACTURER, rec.manufacturer);
