@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const recordId = searchParams.get('record_id');
-  const slot = searchParams.get('slot') as '1' | '2' | '3' | null;
+  const slot = searchParams.get('slot') as '1' | '2' | '3' | '4' | null;
   const rowNo = searchParams.get('row_no');
   const contentType = searchParams.get('content_type') ?? 'image/jpeg';
 
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
 
   const { record_id, slot, file_path } = (await request.json()) as {
     record_id: number;
-    slot: 1 | 2 | 3;
+    slot: 1 | 2 | 3 | 4;
     file_path: string;
   };
 
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
   }
 
   const admin = createAdminClient();
-  const column = slot === 1 ? 'image1_id' : slot === 2 ? 'image2_id' : 'image3_id';
+  const column = slot === 1 ? 'image1_id' : slot === 2 ? 'image2_id' : slot === 3 ? 'image3_id' : 'image4_id';
   const { error } = await admin
     .from('meter_records')
     .update({ [column]: file_path })
@@ -72,7 +72,7 @@ export async function DELETE(request: NextRequest) {
 
   const { record_id, slot, file_path } = (await request.json()) as {
     record_id: number;
-    slot: 1 | 2 | 3;
+    slot: 1 | 2 | 3 | 4;
     file_path: string;
   };
 
@@ -81,7 +81,7 @@ export async function DELETE(request: NextRequest) {
   } catch {}
 
   const admin = createAdminClient();
-  const column = slot === 1 ? 'image1_id' : slot === 2 ? 'image2_id' : 'image3_id';
+  const column = slot === 1 ? 'image1_id' : slot === 2 ? 'image2_id' : slot === 3 ? 'image3_id' : 'image4_id';
   await admin.from('meter_records').update({ [column]: null }).eq('id', record_id);
 
   return NextResponse.json({ success: true });

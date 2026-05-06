@@ -4,30 +4,48 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import JSZip from 'jszip';
 import type { MeterRecord } from '@/app/admin/meter/_actions';
 
-// Excel column letters (1-based column numbers from original code)
+// ─── 기존 형식 컬럼 ────────────────────────────────────────────────────────────
 const C = {
-  ROW_NO:        'B',   // 2
-  BLOCK:         'E',   // 5
-  OLD_METER_NO:  'U',   // 21
-  METER_NO:      'V',   // 22
-  READING:       'AA',  // 27
-  SEALED:        'AB',  // 28
-  METER_COND:    'AC',  // 29
-  BOX_COND:      'AD',  // 30
-  LOCATION:      'AE',  // 31
-  WATER_DIRECT:  'AG',  // 33
-  WATER_TANK:    'AH',  // 34
-  WATER_CISTERN: 'AI',  // 35
-  USAGE_TYPE:    'AL',  // 38
-  FLOOR:         'AO',  // 41
-  NOTE:          'AP',  // 42
-  SURVEY_DATE:   'AQ',  // 43
-  COVER_TYPE:    'AT',  // 46
+  ROW_NO:        'B',
+  BLOCK:         'E',
+  OLD_METER_NO:  'U',
+  METER_NO:      'V',
+  READING:       'AA',
+  SEALED:        'AB',
+  METER_COND:    'AC',
+  BOX_COND:      'AD',
+  LOCATION:      'AE',
+  WATER_DIRECT:  'AG',
+  WATER_TANK:    'AH',
+  WATER_CISTERN: 'AI',
+  USAGE_TYPE:    'AL',
+  FLOOR:         'AO',
+  NOTE:          'AP',
+  SURVEY_DATE:   'AQ',
+  COVER_TYPE:    'AT',
 } as const;
 
-const DATA_START_ROW = 4;
+// ─── 대불 형식 컬럼 ────────────────────────────────────────────────────────────
+const DB = {
+  ROW_NO:       'A',
+  OLD_METER_NO: 'P',
+  READING:      'N',
+  SEALED:       'O',
+  METER_COND:   'T',
+  MANUFACTURER: 'U',
+  LOCATION:     'W',
+  COVER_TYPE:   'X',
+  RELOCATION:   'Y',
+  W_DIRECT:     'Z',
+  W_INDIRECT:   'AA',
+  W_TANK:       'AB',
+  TANK_CAP:     'AC',
+  USAGE_TYPE:   'AI',
+  FLOOR:        'AL',
+  BLOCK:        'AW',
+  SURVEY_DATE:  'AY',
+} as const;
 
-// XML 1.0에서 유효하지 않은 제어 문자 제거 후 이스케이프
 function xmlEscape(s: string): string {
   return s
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '')
@@ -37,14 +55,12 @@ function xmlEscape(s: string): string {
     .replace(/"/g, '&quot;');
 }
 
-// 컬럼 문자열 → 1-based 번호 (A=1, Z=26, AA=27 ...)
 function colNum(s: string): number {
   let n = 0;
   for (const c of s) n = n * 26 + c.charCodeAt(0) - 64;
   return n;
 }
 
-// Parse xl/sharedStrings.xml → string[]
 function parseSharedStrings(xml: string): string[] {
   const result: string[] = [];
   for (const m of xml.matchAll(/<si>([\s\S]*?)<\/si>/g)) {
@@ -57,7 +73,6 @@ function parseSharedStrings(xml: string): string[] {
   return result;
 }
 
-// Read a cell's string value from row XML
 function getCellStr(rowXml: string, col: string, rowNum: number, ss: string[]): string | null {
   const ref = col + rowNum;
   const m = rowXml.match(new RegExp(`<c\\b[^>]*\\br="${ref}"[^>]*(?:/>|>[\\s\\S]*?<\\/c>)`));
@@ -75,7 +90,6 @@ function getCellStr(rowXml: string, col: string, rowNum: number, ss: string[]): 
   return (cell.match(/<v>([^<]*)<\/v>/) ?? [])[1] ?? null;
 }
 
-// shared strings 테이블에서 인덱스 반환 (없으면 추가)
 function getOrAddSS(ss: string[], ssMap: Map<string, number>, value: string): number {
   const existing = ssMap.get(value);
   if (existing !== undefined) return existing;
@@ -85,7 +99,6 @@ function getOrAddSS(ss: string[], ssMap: Map<string, number>, value: string): nu
   return idx;
 }
 
-// 셀에 값을 쓴다 — shared string 방식으로 쓰고, 없는 셀은 열 순서대로 삽입
 function setCellStr(
   rowXml: string, col: string, rowNum: number, value: string,
   ss: string[], ssMap: Map<string, number>,
@@ -101,7 +114,6 @@ function setCellStr(
     return rowXml.replace(cellRe, newCell);
   }
 
-  // 셀이 없으면 열 번호 순서에 맞게 삽입
   const myCol = colNum(col);
   const allCellsRe = /<c\b[^>]*\br="([A-Z]+)\d+"/g;
   let insertAt = rowXml.lastIndexOf('</row>');
@@ -129,7 +141,6 @@ export async function POST(req: NextRequest) {
   const dateFrom = formData.get('dateFrom') as string | null;
   const dateTo   = formData.get('dateTo')   as string | null;
 
-  // survey_date가 "2026-04-13" 형식과 "04월 13일" 형식 둘 다 존재하므로 JS에서 파싱
   function parseSurveyDate(s: string | null): Date | null {
     if (!s) return null;
     const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -156,7 +167,6 @@ export async function POST(req: NextRequest) {
 
   let records = (data ?? []) as MeterRecord[];
 
-  // 날짜 필터: DB 레벨 대신 JS에서 처리 (한국식 날짜 형식도 포함)
   if (dateFrom || dateTo) {
     const isoToDate = (s: string) => { const p = s.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); };
     const from = dateFrom ? isoToDate(dateFrom) : null;
@@ -177,16 +187,13 @@ export async function POST(req: NextRequest) {
     if (r.block && r.row_no) byPos.set(`${r.block}::${r.row_no}`, r);
   }
 
-  // Treat xlsx as a ZIP — only modify the worksheet XML, preserve everything else
   const zip = await JSZip.loadAsync(buffer);
 
-  // Shared strings — 읽기용 + 쓰기용으로 같이 관리
   const ssXml = await zip.file('xl/sharedStrings.xml')?.async('string') ?? '';
   const ss = parseSharedStrings(ssXml);
   const ssMap = new Map<string, number>(ss.map((v, i) => [v, i]));
   const origSsLen = ss.length;
 
-  // Resolve first worksheet path via workbook rels
   let sheetPath = 'xl/worksheets/sheet1.xml';
   const relsXml = await zip.file('xl/_rels/workbook.xml.rels')?.async('string') ?? '';
   for (const m of relsXml.matchAll(/<Relationship\b[^>]+>/g)) {
@@ -200,58 +207,114 @@ export async function POST(req: NextRequest) {
   if (!wsFile) return new NextResponse('시트를 찾을 수 없습니다', { status: 400 });
   let wsXml = await wsFile.async('string');
 
+  // ── 형식 감지: 대불 형식은 row 4 col P 에 "기물번호" ─────────────────────
+  const row4Match = wsXml.match(/<row\b[^>]*\br="4"[^>]*>[\s\S]*?<\/row>/);
+  const row4Xml = row4Match ? row4Match[0] : '';
+  const cellP4 = getCellStr(row4Xml, 'P', 4, ss);
+  const isDaebul = !!cellP4 && cellP4.includes('기물번호');
+
+  const DATA_START_ROW = isDaebul ? 5 : 4;
+
   let filled = 0;
 
   wsXml = wsXml.replace(/<row\b[^>]*\br="(\d+)"[^>]*>[\s\S]*?<\/row>/g, (rowXml, rn) => {
     const rowNum = parseInt(rn);
     if (rowNum < DATA_START_ROW) return rowXml;
 
-    const oldMeter = getCellStr(rowXml, C.OLD_METER_NO, rowNum, ss);
-    const block    = getCellStr(rowXml, C.BLOCK, rowNum, ss);
-    const rowNo    = getCellStr(rowXml, C.ROW_NO, rowNum, ss);
-
-    if (!oldMeter && !block && !rowNo) return rowXml;
-
     let rec: MeterRecord | undefined;
-    if (oldMeter) rec = byMeter.get(oldMeter);
-    if (!rec && block && rowNo) rec = byPos.get(`${block}::${rowNo}`);
-    if (!rec) return rowXml;
 
-    filled++;
-    let row = rowXml;
+    if (isDaebul) {
+      // 대불 형식: P=기물번호, A=번호, AW=소블록
+      const oldMeter = getCellStr(rowXml, DB.OLD_METER_NO, rowNum, ss);
+      const rowNo    = getCellStr(rowXml, DB.ROW_NO, rowNum, ss);
+      const blockVal = getCellStr(rowXml, DB.BLOCK, rowNum, ss);
 
-    function set(col: string, val: string | null | undefined) {
-      if (val) row = setCellStr(row, col, rowNum, val, ss, ssMap);
-    }
+      if (!oldMeter && !rowNo) return rowXml;
+      if (oldMeter) rec = byMeter.get(oldMeter);
+      if (!rec && blockVal && rowNo) rec = byPos.get(`${blockVal}::${rowNo}`);
+      if (!rec) return rowXml;
 
-    if (rec.meter_number) set(C.METER_NO, rec.meter_number);
-    set(C.READING,     rec.reading);
-    set(C.SEALED,      rec.sealed);
-    set(C.METER_COND,  rec.meter_condition);
-    set(C.BOX_COND,    rec.cover_type);
-    set(C.LOCATION,    rec.location);
-    set(C.USAGE_TYPE,  rec.usage_type);
-    set(C.FLOOR,       rec.floor);
-    set(C.NOTE,        rec.note);
-    if (rec.survey_date) {
-      const d = parseSurveyDate(rec.survey_date);
-      if (d) {
-        const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        set(C.SURVEY_DATE, iso);
+      filled++;
+      let row = rowXml;
+      const set = (col: string, val: string | null | undefined) => {
+        if (val) row = setCellStr(row, col, rowNum, val, ss, ssMap);
+      };
+
+      set(DB.READING,      rec.reading);
+      set(DB.SEALED,       rec.sealed);
+      set(DB.METER_COND,   rec.meter_condition);
+      set(DB.MANUFACTURER, rec.manufacturer);
+      set(DB.LOCATION,     rec.location);
+      set(DB.COVER_TYPE,   rec.cover_type);
+      set(DB.RELOCATION,   rec.relocation_needed);
+
+      if (rec.water_supply_type === '물탱크') {
+        set(DB.W_TANK,  '유');
+        set(DB.TANK_CAP, rec.water_tank_capacity);
+      } else if (rec.water_supply_type === '직접') {
+        set(DB.W_DIRECT, '○');
+      } else if (rec.water_supply_type === '간접') {
+        set(DB.W_INDIRECT, '○');
       }
+
+      set(DB.USAGE_TYPE, rec.usage_type);
+      set(DB.FLOOR,      rec.floor);
+
+      if (rec.survey_date) {
+        const d = parseSurveyDate(rec.survey_date);
+        if (d) {
+          const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          set(DB.SURVEY_DATE, iso);
+        }
+      }
+
+      return row;
+    } else {
+      // 기존 형식
+      const oldMeter = getCellStr(rowXml, C.OLD_METER_NO, rowNum, ss);
+      const block    = getCellStr(rowXml, C.BLOCK, rowNum, ss);
+      const rowNo    = getCellStr(rowXml, C.ROW_NO, rowNum, ss);
+
+      if (!oldMeter && !block && !rowNo) return rowXml;
+      if (oldMeter) rec = byMeter.get(oldMeter);
+      if (!rec && block && rowNo) rec = byPos.get(`${block}::${rowNo}`);
+      if (!rec) return rowXml;
+
+      filled++;
+      let row = rowXml;
+      const set = (col: string, val: string | null | undefined) => {
+        if (val) row = setCellStr(row, col, rowNum, val, ss, ssMap);
+      };
+
+      if (rec.meter_number) set(C.METER_NO, rec.meter_number);
+      set(C.READING,    rec.reading);
+      set(C.SEALED,     rec.sealed);
+      set(C.METER_COND, rec.meter_condition);
+      set(C.BOX_COND,   rec.cover_type);
+      set(C.LOCATION,   rec.location);
+      set(C.USAGE_TYPE, rec.usage_type);
+      set(C.FLOOR,      rec.floor);
+      set(C.NOTE,       rec.note);
+      set(C.COVER_TYPE, rec.cover_type);
+
+      if (rec.survey_date) {
+        const d = parseSurveyDate(rec.survey_date);
+        if (d) {
+          const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          set(C.SURVEY_DATE, iso);
+        }
+      }
+
+      if (rec.water_supply_type === '물탱크')      set(C.WATER_TANK,    '○');
+      else if (rec.water_supply_type === '저수조') set(C.WATER_CISTERN, '○');
+      else if (rec.water_supply_type)              set(C.WATER_DIRECT,  '○');
+
+      return row;
     }
-    set(C.COVER_TYPE,  rec.cover_type);
-
-    if (rec.water_supply_type === '물탱크')      set(C.WATER_TANK,    '○');
-    else if (rec.water_supply_type === '저수조') set(C.WATER_CISTERN, '○');
-    else if (rec.water_supply_type)              set(C.WATER_DIRECT,  '○');
-
-    return row;
   });
 
   zip.file(sheetPath, wsXml);
 
-  // 새로 추가된 shared string이 있으면 xl/sharedStrings.xml 업데이트
   if (ss.length > origSsLen) {
     const newEntries = ss.slice(origSsLen)
       .map(v => `<si><t xml:space="preserve">${xmlEscape(v)}</t></si>`)
@@ -263,8 +326,6 @@ export async function POST(req: NextRequest) {
     zip.file('xl/sharedStrings.xml', updated);
   }
 
-  // calcChain.xml은 수식 계산 순서 캐시 — 셀 값 변경 후 무효화되므로 제거
-  // (Excel이 파일 열 때 자동으로 재생성함)
   zip.remove('xl/calcChain.xml');
 
   const out = await zip.generateAsync({

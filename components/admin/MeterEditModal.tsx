@@ -22,11 +22,8 @@ const LOCATION_OPTIONS = [
 ];
 
 const COVER_OPTIONS = ['', '뚜껑 파손', '뚜껑 없음', '없음'];
-
 const WATER_SUPPLY_OPTIONS = ['직접', '간접', '물탱크', '저수조'];
-
 const METER_CONDITION_OPTIONS = ['', '초파', '녹폐', '정상'];
-
 const USAGE_TYPES = ['가정집', '상가', '주상복합', '빌라', '공공기관', '기타'];
 
 function nowString() {
@@ -46,7 +43,7 @@ const inputCls =
 const selectCls =
   'w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-base md:text-sm text-white focus:outline-none focus:border-emerald-400 transition-colors';
 
-type ImageSlot = 1 | 2 | 3;
+type ImageSlot = 1 | 2 | 3 | 4;
 
 function ImageSlotCard({
   slot,
@@ -78,7 +75,6 @@ function ImageSlotCard({
     setLoading(true);
     setError(null);
     try {
-      // 1단계: 서버에서 presigned URL 발급
       const params = new URLSearchParams({
         record_id: String(recordId),
         slot: String(slot),
@@ -95,7 +91,6 @@ function ImageSlotCard({
         filePath: string;
       };
 
-      // 2단계: 브라우저 → R2 직접 업로드 (크기 제한 없음)
       const uploadRes = await fetch(presignedUrl, {
         method: 'PUT',
         body: file,
@@ -103,7 +98,6 @@ function ImageSlotCard({
       });
       if (!uploadRes.ok) throw new Error('스토리지 업로드 실패');
 
-      // 3단계: DB에 경로 저장
       const saveRes = await fetch('/admin/api/upload-meter-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -255,10 +249,15 @@ export default function MeterEditModal({ record, onClose }: Props) {
     cover_type: record.cover_type ?? '',
     water_supply_type: record.water_supply_type ?? null,
     meter_condition: record.meter_condition ?? null,
+    manufacturer: record.manufacturer ?? null,
+    relocation_needed: record.relocation_needed ?? null,
+    water_tank_capacity: record.water_tank_capacity ?? null,
+    water_pressure: record.water_pressure ?? null,
   });
   const [image1Id, setImage1Id] = useState<string | null>(record.image1_id);
   const [image2Id, setImage2Id] = useState<string | null>(record.image2_id);
   const [image3Id, setImage3Id] = useState<string | null>(record.image3_id);
+  const [image4Id, setImage4Id] = useState<string | null>(record.image4_id);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -294,6 +293,10 @@ export default function MeterEditModal({ record, onClose }: Props) {
         cover_type: values.cover_type || null,
         water_supply_type: values.water_supply_type || null,
         meter_condition: values.meter_condition || null,
+        manufacturer: values.manufacturer || null,
+        relocation_needed: values.relocation_needed || null,
+        water_tank_capacity: values.water_supply_type === '물탱크' ? (values.water_tank_capacity || null) : null,
+        water_pressure: values.water_pressure || null,
       };
       const result = await updateMeterRecord(record.id, payload);
       if (result.error) {
@@ -307,16 +310,18 @@ export default function MeterEditModal({ record, onClose }: Props) {
   function handleImageUploaded(slot: ImageSlot, newFileId: string) {
     if (slot === 1) setImage1Id(newFileId);
     else if (slot === 2) setImage2Id(newFileId);
-    else setImage3Id(newFileId);
+    else if (slot === 3) setImage3Id(newFileId);
+    else setImage4Id(newFileId);
   }
 
   function handleImageDeleted(slot: ImageSlot) {
     if (slot === 1) setImage1Id(null);
     else if (slot === 2) setImage2Id(null);
-    else setImage3Id(null);
+    else if (slot === 3) setImage3Id(null);
+    else setImage4Id(null);
   }
 
-  const imageCount = [image1Id, image2Id, image3Id].filter(Boolean).length;
+  const imageCount = [image1Id, image2Id, image3Id, image4Id].filter(Boolean).length;
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-end md:items-center justify-center z-50 p-0 md:p-4">
@@ -402,37 +407,27 @@ export default function MeterEditModal({ record, onClose }: Props) {
             )}
           </div>
 
-          {/* 이미지 */}
+          {/* 이미지 (최대 4장, 2×2) */}
           <div>
             <label className={labelCls}>
               이미지
-              <span className="ml-1.5 font-normal text-zinc-600">(최대 3장, 즉시 저장)</span>
+              <span className="ml-1.5 font-normal text-zinc-600">(최대 4장, 즉시 저장)</span>
             </label>
-            <div className="grid grid-cols-3 gap-2">
-              <ImageSlotCard
-                slot={1}
-                fileId={image1Id}
-                rowNo={record.row_no}
-                recordId={record.id}
-                onUploaded={handleImageUploaded}
-                onDeleted={handleImageDeleted}
-              />
-              <ImageSlotCard
-                slot={2}
-                fileId={image2Id}
-                rowNo={record.row_no}
-                recordId={record.id}
-                onUploaded={handleImageUploaded}
-                onDeleted={handleImageDeleted}
-              />
-              <ImageSlotCard
-                slot={3}
-                fileId={image3Id}
-                rowNo={record.row_no}
-                recordId={record.id}
-                onUploaded={handleImageUploaded}
-                onDeleted={handleImageDeleted}
-              />
+            <div className="grid grid-cols-2 gap-2">
+              {([1, 2, 3, 4] as ImageSlot[]).map((slot) => {
+                const fileId = slot === 1 ? image1Id : slot === 2 ? image2Id : slot === 3 ? image3Id : image4Id;
+                return (
+                  <ImageSlotCard
+                    key={slot}
+                    slot={slot}
+                    fileId={fileId}
+                    rowNo={record.row_no}
+                    recordId={record.id}
+                    onUploaded={handleImageUploaded}
+                    onDeleted={handleImageDeleted}
+                  />
+                );
+              })}
             </div>
           </div>
 
@@ -629,6 +624,19 @@ export default function MeterEditModal({ record, onClose }: Props) {
                 </button>
               ))}
             </div>
+            {/* 물탱크 선택 시 용량 입력 */}
+            {values.water_supply_type === '물탱크' && (
+              <div className="mt-2">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="물탱크 용량(㎥) 입력 (선택)"
+                  value={(values.water_tank_capacity as string) ?? ''}
+                  onChange={(e) => set('water_tank_capacity', e.target.value || null)}
+                  className={inputCls}
+                />
+              </div>
+            )}
           </div>
 
           {/* 계량기 상태 */}
@@ -661,6 +669,69 @@ export default function MeterEditModal({ record, onClose }: Props) {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* 제작회사 */}
+          <div>
+            <label className={labelCls}>
+              제작회사
+              <span className="ml-1.5 font-normal text-zinc-600">(선택)</span>
+            </label>
+            <input
+              type="text"
+              placeholder="직접 입력"
+              value={(values.manufacturer as string) ?? ''}
+              onChange={(e) => set('manufacturer', e.target.value || null)}
+              className={inputCls}
+            />
+          </div>
+
+          {/* 이설필요여부 */}
+          <div>
+            <label className={labelCls}>
+              이설필요여부
+              <span className="ml-1.5 font-normal text-zinc-600">(선택)</span>
+            </label>
+            <div className="flex gap-4 h-[42px] items-center">
+              {['O', 'X'].map((v) => (
+                <label key={v} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name={`relocation-${record.id}`}
+                    value={v}
+                    checked={values.relocation_needed === v}
+                    onChange={() => set('relocation_needed', v)}
+                    className="w-4 h-4 accent-emerald-400"
+                  />
+                  <span className="text-sm text-zinc-300 font-semibold">{v}</span>
+                </label>
+              ))}
+              {values.relocation_needed && (
+                <button
+                  type="button"
+                  onClick={() => set('relocation_needed', null)}
+                  className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+                >
+                  초기화
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* 수압 */}
+          <div>
+            <label className={labelCls}>
+              수압
+              <span className="ml-1.5 font-normal text-zinc-600">(선택)</span>
+            </label>
+            <input
+              type="text"
+              inputMode="decimal"
+              placeholder="수압 입력"
+              value={(values.water_pressure as string) ?? ''}
+              onChange={(e) => set('water_pressure', e.target.value || null)}
+              className={inputCls}
+            />
           </div>
 
         </div>
