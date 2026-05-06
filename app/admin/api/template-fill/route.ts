@@ -28,7 +28,8 @@ const C = {
 // ─── 대불 형식 컬럼 ────────────────────────────────────────────────────────────
 const DB = {
   ROW_NO:       'A',
-  OLD_METER_NO: 'F',  // 계량기번호 (기물번호)
+  OLD_METER_NO: 'F',  // 계량기번호 (기존)
+  METER_NO:     'P',  // 기물번호 (신규 입력값)
   READING:      'N',
   SEALED:       'O',
   METER_COND:   'T',
@@ -262,8 +263,8 @@ export async function POST(req: NextRequest) {
         if (val) row = setCellStr(row, col, rowNum, val, ss, ssMap);
       };
 
-      // 기물번호: O(기존과 동일) → meter_number = old_meter_number, X(직접입력) → 새 값
-      set(DB.OLD_METER_NO, rec.meter_number);
+      set(DB.OLD_METER_NO, rec.old_meter_number); // F: 기존 계량기번호
+      set(DB.METER_NO,     rec.meter_number);     // P: 확인된 기물번호 (O=기존과동일, X=새값)
       set(DB.BLOCK,        rec.block);
       set(DB.READING,      rec.reading);
       set(DB.SEALED,       rec.sealed);
