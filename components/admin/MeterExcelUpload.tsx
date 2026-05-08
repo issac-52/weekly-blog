@@ -44,6 +44,7 @@ const DB_COL = {
   TANK_CAP: 28,     // AC: 용량(㎥)
   USAGE_TYPE: 34,   // AI: 사용형태
   FLOOR: 37,        // AL: 건물층수
+  NOTE: 39,         // AN: 기타내용
   BLOCK: 48,        // AW: 소블록
 } as const;
 
@@ -151,7 +152,7 @@ export default function MeterExcelUpload({ onClose }: Props) {
           water_tank_capacity: str(row[DB_COL.TANK_CAP]),
           usage_type: str(row[DB_COL.USAGE_TYPE]),
           floor: str(row[DB_COL.FLOOR]),
-          note: null,
+          note: str(row[DB_COL.NOTE]),
           survey_date: null,
           image1_id: null,
           image2_id: null,

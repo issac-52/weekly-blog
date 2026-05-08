@@ -44,6 +44,7 @@ const DB = {
   TANK_CAP:     'AC',
   USAGE_TYPE:   'AI',
   FLOOR:        'AL',
+  NOTE:         'AN',
   BLOCK:        'AW',
   SURVEY_DATE:  'AY',
 } as const;
@@ -288,6 +289,7 @@ export async function POST(req: NextRequest) {
 
       set(DB.USAGE_TYPE, rec.usage_type);
       set(DB.FLOOR,      rec.floor);
+      set(DB.NOTE,       rec.note);
 
       if (rec.survey_date) {
         const d = parseSurveyDate(rec.survey_date);
