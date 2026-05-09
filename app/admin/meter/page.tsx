@@ -11,7 +11,7 @@ const VALID_STATUSES: StatusFilter[] = ['processed', 'unprocessed', 'closed'];
 export default async function MeterPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; block?: string; q?: string; sort?: string; dir?: string; status?: string }>;
+  searchParams: Promise<{ page?: string; block?: string; q?: string; sort?: string; dir?: string; status?: string; dateFrom?: string; dateTo?: string }>;
 }) {
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page ?? '1', 10));
@@ -20,9 +20,11 @@ export default async function MeterPage({
   const sortCol = (VALID_SORT_COLS.includes(params.sort as SortCol) ? params.sort : 'row_no') as SortCol;
   const sortDir = (VALID_SORT_DIRS.includes(params.dir as SortDir) ? params.dir : 'asc') as SortDir;
   const status = (VALID_STATUSES.includes(params.status as StatusFilter) ? params.status : undefined) as StatusFilter | undefined;
+  const dateFrom = params.dateFrom?.trim() || undefined;
+  const dateTo = params.dateTo?.trim() || undefined;
 
   const [{ data, count, totalCount, processedCount, closedCount }, blocks] = await Promise.all([
-    getMeterRecords(page, PAGE_SIZE, block, search, sortCol, sortDir, status),
+    getMeterRecords(page, PAGE_SIZE, block, search, sortCol, sortDir, status, dateFrom, dateTo),
     getBlockList(),
   ]);
 
@@ -56,6 +58,8 @@ export default async function MeterPage({
         processedCount={processedCount}
         unprocessedCount={unprocessedCount}
         closedCount={closedCount}
+        dateFrom={dateFrom ?? ''}
+        dateTo={dateTo ?? ''}
       />
     </div>
   );

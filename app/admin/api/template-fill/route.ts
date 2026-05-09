@@ -291,8 +291,8 @@ export async function POST(req: NextRequest) {
       set(DB.FLOOR,      rec.floor);
       set(DB.NOTE,       rec.note);
 
-      if (rec.survey_date) {
-        const d = parseSurveyDate(rec.survey_date);
+      {
+        const d = parseSurveyDate(rec.survey_date) ?? parseSurveyDate(rec.created_at);
         if (d) {
           const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
           set(DB.SURVEY_DATE, iso);
@@ -328,8 +328,8 @@ export async function POST(req: NextRequest) {
       set(C.NOTE,       rec.note);
       set(C.COVER_TYPE, rec.cover_type);
 
-      if (rec.survey_date) {
-        const d = parseSurveyDate(rec.survey_date);
+      {
+        const d = parseSurveyDate(rec.survey_date) ?? parseSurveyDate(rec.created_at);
         if (d) {
           const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
           set(C.SURVEY_DATE, iso);

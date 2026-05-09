@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Pencil, Upload, Download, ChevronLeft, ChevronRight, Search, X, Camera, ChevronUp, ChevronDown, ChevronsUpDown, Copy, Check, RefreshCw, MapPin, List, Map } from 'lucide-react';
+import { Pencil, Upload, Download, ChevronLeft, ChevronRight, Search, X, Camera, ChevronUp, ChevronDown, ChevronsUpDown, Copy, Check, RefreshCw, MapPin, List, Map, Calendar } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { type MeterRecord, type SortCol, type SortDir, type StatusFilter, getCompletedRecords } from '@/app/admin/meter/_actions';
 import MeterExcelUpload from './MeterExcelUpload';
@@ -23,6 +23,8 @@ type Props = {
   processedCount: number;
   unprocessedCount: number;
   closedCount: number;
+  dateFrom: string;
+  dateTo: string;
 };
 
 function getPaginationRange(current: number, total: number): (number | '…')[] {
@@ -58,6 +60,8 @@ export default function MeterTable({
   processedCount,
   unprocessedCount,
   closedCount,
+  dateFrom,
+  dateTo,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -69,6 +73,8 @@ export default function MeterTable({
   const [isDownloading, setIsDownloading] = useState(false);
   const [isImageDownloading, setIsImageDownloading] = useState(false);
   const [imageProgress, setImageProgress] = useState<{ current: number; total: number } | null>(null);
+  const [filterDateFrom, setFilterDateFrom] = useState(dateFrom);
+  const [filterDateTo, setFilterDateTo] = useState(dateTo);
   const [searchInput, setSearchInput] = useState(search);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -191,6 +197,8 @@ export default function MeterTable({
     newSortCol?: SortCol,
     newSortDir?: SortDir,
     newStatus?: StatusFilter | null,
+    newDateFrom?: string,
+    newDateTo?: string,
   ) {
     const params = new URLSearchParams();
     const b = newBlock !== undefined ? newBlock : selectedBlock;
@@ -198,11 +206,15 @@ export default function MeterTable({
     const sc = newSortCol !== undefined ? newSortCol : sortCol;
     const sd = newSortDir !== undefined ? newSortDir : sortDir;
     const st = newStatus !== undefined ? newStatus : status;
+    const df = newDateFrom !== undefined ? newDateFrom : filterDateFrom;
+    const dt = newDateTo !== undefined ? newDateTo : filterDateTo;
     if (b) params.set('block', b);
     if (q) params.set('q', q);
     if (newPage > 1) params.set('page', String(newPage));
     if (sc !== 'row_no' || sd !== 'asc') { params.set('sort', sc); params.set('dir', sd); }
     if (st) params.set('status', st);
+    if (df) params.set('dateFrom', df);
+    if (dt) params.set('dateTo', dt);
     const qs = params.toString();
     router.push(qs ? `${pathname}?${qs}` : pathname);
   }
@@ -221,6 +233,17 @@ export default function MeterTable({
     return sortDir === 'asc'
       ? <ChevronUp size={12} className="text-emerald-400" />
       : <ChevronDown size={12} className="text-emerald-400" />;
+  }
+
+  function handleDateSearch(e: React.FormEvent) {
+    e.preventDefault();
+    navigate(1, undefined, undefined, undefined, undefined, undefined, filterDateFrom, filterDateTo);
+  }
+
+  function clearDateFilter() {
+    setFilterDateFrom('');
+    setFilterDateTo('');
+    navigate(1, undefined, undefined, undefined, undefined, undefined, '', '');
   }
 
   function handleSearch(e: React.FormEvent) {
@@ -329,6 +352,43 @@ export default function MeterTable({
           </button>
         ))}
       </div>
+
+      {/* 날짜 검색 */}
+      <form onSubmit={handleDateSearch} className="flex items-center gap-2 mb-3 flex-wrap">
+        <span className="flex items-center gap-1 text-xs text-zinc-500 shrink-0">
+          <Calendar size={12} />조사일자
+        </span>
+        <input
+          type="date"
+          value={filterDateFrom}
+          max={filterDateTo || undefined}
+          onChange={(e) => setFilterDateFrom(e.target.value)}
+          className="bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-400 transition-colors"
+        />
+        <span className="text-zinc-600 text-xs shrink-0">~</span>
+        <input
+          type="date"
+          value={filterDateTo}
+          min={filterDateFrom || undefined}
+          onChange={(e) => setFilterDateTo(e.target.value)}
+          className="bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-400 transition-colors"
+        />
+        <button
+          type="submit"
+          className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white text-xs rounded-lg transition-colors shrink-0"
+        >
+          검색
+        </button>
+        {(filterDateFrom || filterDateTo) && (
+          <button
+            type="button"
+            onClick={clearDateFilter}
+            className="flex items-center gap-1 px-2 py-1.5 text-zinc-500 hover:text-white text-xs rounded-lg transition-colors"
+          >
+            <X size={12} />초기화
+          </button>
+        )}
+      </form>
 
       {/* 검색창 */}
       <form onSubmit={handleSearch} className="flex gap-2 mb-4">
@@ -455,7 +515,7 @@ export default function MeterTable({
                     <td className="px-3 py-2 whitespace-nowrap"><Val value={r.usage_type} /></td>
                     <td className="px-3 py-2"><Val value={r.floor} /></td>
                     <td className="px-3 py-2 whitespace-nowrap"><Val value={r.note} /></td>
-                    <td className="px-3 py-2 font-mono whitespace-nowrap"><Val value={r.survey_date} /></td>
+                    <td className="px-3 py-2 font-mono whitespace-nowrap"><Val value={r.survey_date?.slice(0, 10) ?? null} /></td>
                     <td className="px-3 py-2 whitespace-nowrap"><Val value={r.cover_type} /></td>
                     <td className="px-3 py-2 whitespace-nowrap"><Val value={r.water_supply_type} /></td>
                     <td className="px-3 py-2 whitespace-nowrap"><Val value={r.meter_condition} /></td>

@@ -67,6 +67,8 @@ export async function getMeterRecords(
   sortCol: SortCol = 'row_no',
   sortDir: SortDir = 'asc',
   status?: StatusFilter,
+  dateFrom?: string,
+  dateTo?: string,
 ) {
   const admin = createAdminClient();
   const asc = sortDir === 'asc';
@@ -108,6 +110,20 @@ export async function getMeterRecords(
       .not('location', 'is', null).not('usage_type', 'is', null).not('floor', 'is', null);
   } else if (status === 'unprocessed') {
     mainQuery = mainQuery.or(NOT_CLOSED).or(ANY_EMPTY);
+  }
+
+  if (dateFrom) {
+    mainQuery     = mainQuery.gte('survey_date', dateFrom);
+    totalQuery    = totalQuery.gte('survey_date', dateFrom);
+    closedQuery   = closedQuery.gte('survey_date', dateFrom);
+    processedQuery = processedQuery.gte('survey_date', dateFrom);
+  }
+  if (dateTo) {
+    const nd = nextDay(dateTo);
+    mainQuery     = mainQuery.lt('survey_date', nd);
+    totalQuery    = totalQuery.lt('survey_date', nd);
+    closedQuery   = closedQuery.lt('survey_date', nd);
+    processedQuery = processedQuery.lt('survey_date', nd);
   }
 
   const [{ data, count, error }, { count: totalCount }, { count: closedCount }, { count: processedCount }] =
