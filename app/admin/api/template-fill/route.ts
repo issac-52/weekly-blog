@@ -257,8 +257,9 @@ export async function POST(req: NextRequest) {
       const blockVal = getCellStr(rowXml, DB.BLOCK, rowNum, ss);
 
       if (!oldMeter && !rowNo) return rowXml;
-      if (oldMeter) rec = byMeter.get(oldMeter);
-      if (!rec && blockVal && rowNo) rec = byPos.get(`${blockVal}::${rowNo}`);
+      // byPos(도면번호+블록) 우선 — 같은 계량기번호가 여러 행에 있을 때 각 행을 정확히 매칭
+      if (blockVal && rowNo) rec = byPos.get(`${blockVal}::${rowNo}`);
+      if (!rec && oldMeter) rec = byMeter.get(oldMeter);
       if (!rec) return rowXml;
 
       if (!filledIds.has(rec.id)) { filled++; filledIds.add(rec.id); }
@@ -308,8 +309,8 @@ export async function POST(req: NextRequest) {
       const rowNo    = getCellStr(rowXml, C.ROW_NO, rowNum, ss);
 
       if (!oldMeter && !block && !rowNo) return rowXml;
-      if (oldMeter) rec = byMeter.get(oldMeter);
-      if (!rec && block && rowNo) rec = byPos.get(`${block}::${rowNo}`);
+      if (block && rowNo) rec = byPos.get(`${block}::${rowNo}`);
+      if (!rec && oldMeter) rec = byMeter.get(oldMeter);
       if (!rec) return rowXml;
 
       if (!filledIds.has(rec.id)) { filled++; filledIds.add(rec.id); }
