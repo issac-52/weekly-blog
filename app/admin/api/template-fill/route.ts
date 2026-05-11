@@ -268,10 +268,7 @@ export async function POST(req: NextRequest) {
       };
 
       set(DB.OLD_METER_NO, rec.old_meter_number);
-      // 기물번호(P열): X(기존과 다름)일 때만 — meter_number가 old_meter_number와 다를 때
-      if (rec.meter_number && rec.meter_number !== rec.old_meter_number) {
-        set(DB.METER_NO, rec.meter_number);
-      }
+      set(DB.METER_NO, rec.meter_number ?? rec.old_meter_number);
       set(DB.WATER_PRESSURE, rec.water_pressure);
       set(DB.BLOCK,          rec.block);
       set(DB.READING,        rec.reading);
