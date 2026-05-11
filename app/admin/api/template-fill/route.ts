@@ -257,9 +257,12 @@ export async function POST(req: NextRequest) {
       const blockVal = getCellStr(rowXml, DB.BLOCK, rowNum, ss);
 
       if (!oldMeter && !rowNo) return rowXml;
-      // byPos(도면번호+블록) 우선 — 같은 계량기번호가 여러 행에 있을 때 각 행을 정확히 매칭
-      if (blockVal && rowNo) rec = byPos.get(`${blockVal}::${rowNo}`);
-      if (!rec && oldMeter) rec = byMeter.get(oldMeter);
+      // 위치 정보 있으면 byPos만 사용 (폴백 없음 — 같은 계량기번호 중복 행에 잘못된 레코드 매칭 방지)
+      if (blockVal && rowNo) {
+        rec = byPos.get(`${blockVal}::${rowNo}`);
+      } else if (oldMeter) {
+        rec = byMeter.get(oldMeter);
+      }
       if (!rec) return rowXml;
 
       if (!filledIds.has(rec.id)) { filled++; filledIds.add(rec.id); }
@@ -309,8 +312,11 @@ export async function POST(req: NextRequest) {
       const rowNo    = getCellStr(rowXml, C.ROW_NO, rowNum, ss);
 
       if (!oldMeter && !block && !rowNo) return rowXml;
-      if (block && rowNo) rec = byPos.get(`${block}::${rowNo}`);
-      if (!rec && oldMeter) rec = byMeter.get(oldMeter);
+      if (block && rowNo) {
+        rec = byPos.get(`${block}::${rowNo}`);
+      } else if (oldMeter) {
+        rec = byMeter.get(oldMeter);
+      }
       if (!rec) return rowXml;
 
       if (!filledIds.has(rec.id)) { filled++; filledIds.add(rec.id); }
