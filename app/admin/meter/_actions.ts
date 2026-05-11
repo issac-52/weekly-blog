@@ -81,10 +81,13 @@ export async function getMeterRecords(
 
   let totalQuery = admin.from('meter_records').select('*', { count: 'exact', head: true });
   let closedQuery = admin.from('meter_records').select('*', { count: 'exact', head: true }).eq('note', '호폐');
+  const PROCESSED_OR =
+    'and(note.is.null,meter_number.not.is.null,reading.not.is.null,sealed.not.is.null,location.not.is.null,usage_type.not.is.null,floor.not.is.null),' +
+    'and(note.neq.호폐,meter_number.not.is.null,reading.not.is.null,sealed.not.is.null,location.not.is.null,usage_type.not.is.null,floor.not.is.null),' +
+    'note.eq.호폐';
+
   let processedQuery = admin.from('meter_records').select('*', { count: 'exact', head: true })
-    .or(NOT_CLOSED).not('meter_number', 'is', null).not('reading', 'is', null)
-    .not('sealed', 'is', null).not('location', 'is', null)
-    .not('usage_type', 'is', null).not('floor', 'is', null);
+    .or(PROCESSED_OR);
 
   if (block) {
     mainQuery = mainQuery.eq('block', block);
@@ -105,9 +108,7 @@ export async function getMeterRecords(
   if (status === 'closed') {
     mainQuery = mainQuery.eq('note', '호폐');
   } else if (status === 'processed') {
-    mainQuery = mainQuery.or(NOT_CLOSED).not('meter_number', 'is', null)
-      .not('reading', 'is', null).not('sealed', 'is', null)
-      .not('location', 'is', null).not('usage_type', 'is', null).not('floor', 'is', null);
+    mainQuery = mainQuery.or(PROCESSED_OR);
   } else if (status === 'unprocessed') {
     mainQuery = mainQuery.or(NOT_CLOSED).or(ANY_EMPTY);
   }

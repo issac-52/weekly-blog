@@ -28,7 +28,7 @@ export default async function MeterPage({
     getBlockList(),
   ]);
 
-  const unprocessedCount = totalCount - processedCount - closedCount;
+  const unprocessedCount = totalCount - processedCount;
 
   return (
     <div>
