@@ -30,7 +30,8 @@ const DB_COL = {
   ROW_NO: 0,        // A: 번호
   NAME: 2,          // C: 성명
   ADDRESS: 3,       // D: 주소
-  OLD_METER: 5,     // F: 계량기번호 (기물번호)
+  OLD_METER: 5,     // F: 계량기번호 (기존)
+  GIMUL_NO: 15,     // P: 기물번호 (조사된 실물 번호)
   READING: 13,      // N: 지침(금회)
   SEALED: 14,       // O: 봉인유무
   METER_COND: 19,   // T: 수도미터 상태
@@ -134,13 +135,21 @@ export default function MeterExcelUpload({ onClose }: Props) {
         else if (wIndirect) water_supply_type = '간접';
         else if (wTank === '유') water_supply_type = '물탱크';
 
+        // 기물번호(조사) vs 계량기번호(기존) 비교 → meter_number 결정
+        const oldMeter = str(row[DB_COL.OLD_METER]);
+        const gimulNo = str(row[DB_COL.GIMUL_NO]);
+        let meter_number: string | null = null;
+        if (gimulNo !== null) {
+          meter_number = gimulNo === oldMeter ? '기존과 같음' : gimulNo;
+        }
+
         return {
           row_no: str(row[DB_COL.ROW_NO]),
           name: maskName(str(row[DB_COL.NAME])),
           address: str(row[DB_COL.ADDRESS]),
           block: str(row[DB_COL.BLOCK]),
-          old_meter_number: str(row[DB_COL.OLD_METER]),
-          meter_number: null,
+          old_meter_number: oldMeter,
+          meter_number,
           reading: str(row[DB_COL.READING]),
           sealed: str(row[DB_COL.SEALED]),
           meter_condition: str(row[DB_COL.METER_COND]),
