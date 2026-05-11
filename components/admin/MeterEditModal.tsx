@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition, useRef } from 'react';
-import { X, Check, Camera, Trash2, ImagePlus, ExternalLink } from 'lucide-react';
+import { X, Check, Camera, Trash2, ImagePlus, ExternalLink, ChevronDown } from 'lucide-react';
 import { updateMeterRecord, type MeterRecord, type MeterInsert } from '@/app/admin/meter/_actions';
 
 const STORAGE_BASE = process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
@@ -234,6 +234,7 @@ export default function MeterEditModal({ record, onClose }: Props) {
 
   const [meterSame, setMeterSame] = useState(isSameInit);
   const [isHopye, setIsHopye] = useState(record.note === '호폐');
+  const [extraOpen, setExtraOpen] = useState(false);
   const [usageTypeSelect, setUsageTypeSelect] = useState(initUsageSelect(record.usage_type));
   const [usageTypeCustom, setUsageTypeCustom] = useState(initUsageCustom(record.usage_type));
   const [locationSelect, setLocationSelect] = useState(initLocationSelect(record.location));
@@ -253,6 +254,8 @@ export default function MeterEditModal({ record, onClose }: Props) {
     relocation_needed: record.relocation_needed ?? null,
     water_tank_capacity: record.water_tank_capacity ?? null,
     water_pressure: record.water_pressure ?? null,
+    meter_type: record.meter_type ?? null,
+    reading_method: record.reading_method ?? null,
   });
   const [image1Id, setImage1Id] = useState<string | null>(record.image1_id);
   const [image2Id, setImage2Id] = useState<string | null>(record.image2_id);
@@ -297,6 +300,8 @@ export default function MeterEditModal({ record, onClose }: Props) {
         relocation_needed: values.relocation_needed || null,
         water_tank_capacity: values.water_supply_type === '물탱크' ? (values.water_tank_capacity || null) : null,
         water_pressure: values.water_pressure || null,
+        meter_type: values.meter_type || null,
+        reading_method: values.meter_type === '기계식' ? '인력검침' : (values.reading_method || null),
       };
       const result = await updateMeterRecord(record.id, payload);
       if (result.error) {
@@ -578,160 +583,234 @@ export default function MeterEditModal({ record, onClose }: Props) {
             />
           </div>
 
-          {/* 보호통뚜껑양식 */}
-          <div>
-            <label className={labelCls}>보호통뚜껑양식</label>
-            <select
-              value={(values.cover_type as string) ?? ''}
-              onChange={(e) => set('cover_type', e.target.value || null)}
-              className={selectCls}
+          {/* 추가정보 아코디언 */}
+          <div className="border border-zinc-800 rounded-xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setExtraOpen((o) => !o)}
+              className="w-full flex items-center justify-between px-4 py-3 bg-zinc-800/50 hover:bg-zinc-800 transition-colors"
             >
-              {COVER_OPTIONS.map((o) => (
-                <option key={o} value={o}>
-                  {o || '— 선택 —'}
-                </option>
-              ))}
-            </select>
-          </div>
+              <span className="text-sm font-semibold text-zinc-300">추가정보</span>
+              <ChevronDown
+                size={16}
+                className={`text-zinc-500 transition-transform ${extraOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
 
-          {/* 급수방식 */}
-          <div>
-            <label className={labelCls}>급수방식</label>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => set('water_supply_type', null)}
-                className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
-                  !values.water_supply_type
-                    ? 'bg-zinc-600 border-zinc-500 text-white'
-                    : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
-                }`}
-              >
-                미선택
-              </button>
-              {WATER_SUPPLY_OPTIONS.map((o) => (
-                <button
-                  key={o}
-                  type="button"
-                  onClick={() => set('water_supply_type', o)}
-                  className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
-                    values.water_supply_type === o
-                      ? 'bg-emerald-400 border-emerald-400 text-zinc-950 font-semibold'
-                      : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
-                  }`}
-                >
-                  {o}
-                </button>
-              ))}
-            </div>
-            {/* 물탱크 선택 시 용량 입력 */}
-            {values.water_supply_type === '물탱크' && (
-              <div className="mt-2">
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="물탱크 용량(㎥) 입력 (선택)"
-                  value={(values.water_tank_capacity as string) ?? ''}
-                  onChange={(e) => set('water_tank_capacity', e.target.value || null)}
-                  className={inputCls}
-                />
+            {extraOpen && (
+              <div className="px-4 py-4 space-y-4">
+                {/* 계량기형식 */}
+                <div>
+                  <label className={labelCls}>계량기형식</label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => set('meter_type', null)}
+                      className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+                        !values.meter_type
+                          ? 'bg-zinc-600 border-zinc-500 text-white'
+                          : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      미선택
+                    </button>
+                    {['기계식', '전자식'].map((v) => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => {
+                          set('meter_type', v);
+                          if (v === '기계식') set('reading_method', '인력검침');
+                          else set('reading_method', null);
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+                          values.meter_type === v
+                            ? 'bg-emerald-400 border-emerald-400 text-zinc-950 font-semibold'
+                            : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 검침방식 */}
+                {values.meter_type && (
+                  <div>
+                    <label className={labelCls}>검침방식</label>
+                    {values.meter_type === '기계식' ? (
+                      <div className="px-3 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-sm text-zinc-300">
+                        인력검침
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        {['인력검침', '자동'].map((v) => (
+                          <button
+                            key={v}
+                            type="button"
+                            onClick={() => set('reading_method', v)}
+                            className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+                              values.reading_method === v
+                                ? 'bg-emerald-400 border-emerald-400 text-zinc-950 font-semibold'
+                                : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
+                            }`}
+                          >
+                            {v}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 보호통뚜껑양식 */}
+                <div>
+                  <label className={labelCls}>보호통뚜껑양식</label>
+                  <select
+                    value={(values.cover_type as string) ?? ''}
+                    onChange={(e) => set('cover_type', e.target.value || null)}
+                    className={selectCls}
+                  >
+                    {COVER_OPTIONS.map((o) => (
+                      <option key={o} value={o}>
+                        {o || '— 선택 —'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 급수방식 */}
+                <div>
+                  <label className={labelCls}>급수방식</label>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => set('water_supply_type', null)}
+                      className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+                        !values.water_supply_type
+                          ? 'bg-zinc-600 border-zinc-500 text-white'
+                          : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      미선택
+                    </button>
+                    {WATER_SUPPLY_OPTIONS.map((o) => (
+                      <button
+                        key={o}
+                        type="button"
+                        onClick={() => set('water_supply_type', o)}
+                        className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+                          values.water_supply_type === o
+                            ? 'bg-emerald-400 border-emerald-400 text-zinc-950 font-semibold'
+                            : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        {o}
+                      </button>
+                    ))}
+                  </div>
+                  {values.water_supply_type === '물탱크' && (
+                    <div className="mt-2">
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="물탱크 용량(㎥) 입력 (선택)"
+                        value={(values.water_tank_capacity as string) ?? ''}
+                        onChange={(e) => set('water_tank_capacity', e.target.value || null)}
+                        className={inputCls}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* 계량기 상태 */}
+                <div>
+                  <label className={labelCls}>계량기 상태</label>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => set('meter_condition', null)}
+                      className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+                        !values.meter_condition
+                          ? 'bg-zinc-600 border-zinc-500 text-white'
+                          : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      미선택
+                    </button>
+                    {METER_CONDITION_OPTIONS.filter(Boolean).map((o) => (
+                      <button
+                        key={o}
+                        type="button"
+                        onClick={() => set('meter_condition', o)}
+                        className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+                          values.meter_condition === o
+                            ? 'bg-emerald-400 border-emerald-400 text-zinc-950 font-semibold'
+                            : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        {o}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 제작회사 */}
+                <div>
+                  <label className={labelCls}>제작회사</label>
+                  <input
+                    type="text"
+                    placeholder="직접 입력"
+                    value={(values.manufacturer as string) ?? ''}
+                    onChange={(e) => set('manufacturer', e.target.value || null)}
+                    className={inputCls}
+                  />
+                </div>
+
+                {/* 이설필요여부 */}
+                <div>
+                  <label className={labelCls}>이설필요여부</label>
+                  <div className="flex gap-4 h-[42px] items-center">
+                    {['O', 'X'].map((v) => (
+                      <label key={v} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name={`relocation-${record.id}`}
+                          value={v}
+                          checked={values.relocation_needed === v}
+                          onChange={() => set('relocation_needed', v)}
+                          className="w-4 h-4 accent-emerald-400"
+                        />
+                        <span className="text-sm text-zinc-300 font-semibold">{v}</span>
+                      </label>
+                    ))}
+                    {values.relocation_needed && (
+                      <button
+                        type="button"
+                        onClick={() => set('relocation_needed', null)}
+                        className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+                      >
+                        초기화
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* 수압 */}
+                <div>
+                  <label className={labelCls}>수압</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="수압 입력"
+                    value={(values.water_pressure as string) ?? ''}
+                    onChange={(e) => set('water_pressure', e.target.value || null)}
+                    className={inputCls}
+                  />
+                </div>
               </div>
             )}
-          </div>
-
-          {/* 계량기 상태 */}
-          <div>
-            <label className={labelCls}>계량기 상태</label>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => set('meter_condition', null)}
-                className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
-                  !values.meter_condition
-                    ? 'bg-zinc-600 border-zinc-500 text-white'
-                    : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
-                }`}
-              >
-                미선택
-              </button>
-              {METER_CONDITION_OPTIONS.filter(Boolean).map((o) => (
-                <button
-                  key={o}
-                  type="button"
-                  onClick={() => set('meter_condition', o)}
-                  className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
-                    values.meter_condition === o
-                      ? 'bg-emerald-400 border-emerald-400 text-zinc-950 font-semibold'
-                      : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
-                  }`}
-                >
-                  {o}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 제작회사 */}
-          <div>
-            <label className={labelCls}>
-              제작회사
-              <span className="ml-1.5 font-normal text-zinc-600">(선택)</span>
-            </label>
-            <input
-              type="text"
-              placeholder="직접 입력"
-              value={(values.manufacturer as string) ?? ''}
-              onChange={(e) => set('manufacturer', e.target.value || null)}
-              className={inputCls}
-            />
-          </div>
-
-          {/* 이설필요여부 */}
-          <div>
-            <label className={labelCls}>
-              이설필요여부
-              <span className="ml-1.5 font-normal text-zinc-600">(선택)</span>
-            </label>
-            <div className="flex gap-4 h-[42px] items-center">
-              {['O', 'X'].map((v) => (
-                <label key={v} className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name={`relocation-${record.id}`}
-                    value={v}
-                    checked={values.relocation_needed === v}
-                    onChange={() => set('relocation_needed', v)}
-                    className="w-4 h-4 accent-emerald-400"
-                  />
-                  <span className="text-sm text-zinc-300 font-semibold">{v}</span>
-                </label>
-              ))}
-              {values.relocation_needed && (
-                <button
-                  type="button"
-                  onClick={() => set('relocation_needed', null)}
-                  className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
-                >
-                  초기화
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* 수압 */}
-          <div>
-            <label className={labelCls}>
-              수압
-              <span className="ml-1.5 font-normal text-zinc-600">(선택)</span>
-            </label>
-            <input
-              type="text"
-              inputMode="decimal"
-              placeholder="수압 입력"
-              value={(values.water_pressure as string) ?? ''}
-              onChange={(e) => set('water_pressure', e.target.value || null)}
-              className={inputCls}
-            />
           </div>
 
         </div>

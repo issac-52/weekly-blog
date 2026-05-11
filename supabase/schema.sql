@@ -81,6 +81,8 @@ CREATE TABLE IF NOT EXISTS public.meter_records (
 -- ALTER TABLE public.meter_records ADD COLUMN IF NOT EXISTS image3_id TEXT;
 -- ALTER TABLE public.meter_records ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION;
 -- ALTER TABLE public.meter_records ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION;
+-- ALTER TABLE public.meter_records ADD COLUMN IF NOT EXISTS meter_type TEXT;
+-- ALTER TABLE public.meter_records ADD COLUMN IF NOT EXISTS reading_method TEXT;
 
 CREATE INDEX IF NOT EXISTS meter_records_block_idx ON public.meter_records (block);
 

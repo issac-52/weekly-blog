@@ -30,6 +30,8 @@ export type MeterRecord = {
   relocation_needed: string | null;
   water_tank_capacity: string | null;
   water_pressure: string | null;
+  meter_type: string | null;
+  reading_method: string | null;
   lat: number | null;
   lng: number | null;
   created_at: string;
