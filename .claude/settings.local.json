@@ -33,7 +33,8 @@
       "Bash(node -e \"console.log\\(require\\('./package.json'\\).dependencies.next\\)\")",
       "Bash(Get-ChildItem -Path \"c:\\\\development\\\\meter\\\\private-blog\\\\app\\\\admin\\\\meter\" -Recurse)",
       "Bash(Select-Object FullName)",
-      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")"
+      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")",
+      "Bash(python3)"
     ]
   }
 }

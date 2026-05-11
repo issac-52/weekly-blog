@@ -242,6 +242,7 @@ export async function POST(req: NextRequest) {
   const DATA_START_ROW = isDaebul ? 5 : 4;
 
   let filled = 0;
+  const filledIds = new Set<number>();
 
   wsXml = wsXml.replace(/<row\b[^>]*\br="(\d+)"[^>]*>[\s\S]*?<\/row>/g, (rowXml, rn) => {
     const rowNum = parseInt(rn);
@@ -260,7 +261,7 @@ export async function POST(req: NextRequest) {
       if (!rec && blockVal && rowNo) rec = byPos.get(`${blockVal}::${rowNo}`);
       if (!rec) return rowXml;
 
-      filled++;
+      if (!filledIds.has(rec.id)) { filled++; filledIds.add(rec.id); }
       let row = rowXml;
       const set = (col: string, val: string | null | undefined) => {
         if (val) row = setCellStr(row, col, rowNum, val, ss, ssMap);
@@ -314,7 +315,7 @@ export async function POST(req: NextRequest) {
       if (!rec && block && rowNo) rec = byPos.get(`${block}::${rowNo}`);
       if (!rec) return rowXml;
 
-      filled++;
+      if (!filledIds.has(rec.id)) { filled++; filledIds.add(rec.id); }
       let row = rowXml;
       const set = (col: string, val: string | null | undefined) => {
         if (val) row = setCellStr(row, col, rowNum, val, ss, ssMap);
