@@ -70,6 +70,7 @@ export default function MeterTable({
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [downloadDateFrom, setDownloadDateFrom] = useState('');
   const [downloadDateTo, setDownloadDateTo] = useState('');
+  const [downloadBlock, setDownloadBlock] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
   const [isImageDownloading, setIsImageDownloading] = useState(false);
   const [imageProgress, setImageProgress] = useState<{ current: number; total: number } | null>(null);
@@ -114,7 +115,7 @@ export default function MeterTable({
     }
   }
 
-  async function handleImageDownload(dateFrom?: string, dateTo?: string) {
+  async function handleImageDownload(dateFrom?: string, dateTo?: string, block?: string) {
     if (!('showSaveFilePicker' in window)) {
       alert('이 기능은 Chrome 또는 Edge 브라우저에서만 사용 가능합니다.');
       return;
@@ -124,14 +125,19 @@ export default function MeterTable({
       const params = new URLSearchParams();
       if (dateFrom) params.set('dateFrom', dateFrom);
       if (dateTo) params.set('dateTo', dateTo);
+      if (block) params.set('block', block);
       const listRes = await fetch(`/admin/api/image-list?${params}`);
       if (!listRes.ok) { alert(await listRes.text()); return; }
-      const images: { path: string; filename: string }[] = await listRes.json();
-      if (images.length === 0) { alert('해당 기간에 이미지가 없습니다.'); return; }
+      const images: { path: string; filename: string; url: string | null }[] = await listRes.json();
+      if (images.length === 0) { alert('해당 조건에 이미지가 없습니다.'); return; }
 
-      const label = dateFrom && dateTo
-        ? `${dateFrom}~${dateTo}`
-        : (dateFrom ?? dateTo ?? new Date().toISOString().slice(0, 10));
+      const parts: string[] = [];
+      if (block) parts.push(`블록${block}`);
+      if (dateFrom && dateTo) parts.push(`${dateFrom}~${dateTo}`);
+      else if (dateFrom) parts.push(dateFrom);
+      else if (dateTo) parts.push(dateTo);
+      if (parts.length === 0) parts.push(new Date().toISOString().slice(0, 10));
+      const label = parts.join('_');
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const fileHandle = await (window as any).showSaveFilePicker({
@@ -154,8 +160,10 @@ export default function MeterTable({
 
       setImageProgress({ current: 0, total: images.length });
       for (let i = 0; i < images.length; i++) {
-        const { path, filename } = images[i];
-        const res = await fetch(`/admin/api/image-proxy?path=${encodeURIComponent(path)}`);
+        const { path, filename, url } = images[i];
+        // url이 있으면 R2에서 직접 받아 Vercel bandwidth 소비 없음
+        const fetchUrl = url ?? `/admin/api/image-proxy?path=${encodeURIComponent(path)}`;
+        const res = await fetch(fetchUrl);
         if (res.ok && res.body) {
           const zipFile = new ZipDeflate(filename, { level: 0 });
           zip.add(zipFile);
@@ -675,24 +683,39 @@ export default function MeterTable({
                 <X size={16} />
               </button>
             </div>
-            <div className="mb-4">
-              <p className="text-xs text-zinc-400 mb-2">날짜 범위 (비우면 전체)</p>
-              <div className="flex items-center gap-2">
-                <input
-                  type="date"
-                  value={downloadDateFrom}
-                  max={downloadDateTo || undefined}
-                  onChange={(e) => setDownloadDateFrom(e.target.value)}
-                  className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-400 transition-colors"
-                />
-                <span className="text-zinc-600 text-xs shrink-0">~</span>
-                <input
-                  type="date"
-                  value={downloadDateTo}
-                  min={downloadDateFrom || undefined}
-                  onChange={(e) => setDownloadDateTo(e.target.value)}
-                  className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-400 transition-colors"
-                />
+            <div className="space-y-3 mb-4">
+              <div>
+                <p className="text-xs text-zinc-400 mb-2">날짜 범위 (비우면 전체)</p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={downloadDateFrom}
+                    max={downloadDateTo || undefined}
+                    onChange={(e) => setDownloadDateFrom(e.target.value)}
+                    className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-400 transition-colors"
+                  />
+                  <span className="text-zinc-600 text-xs shrink-0">~</span>
+                  <input
+                    type="date"
+                    value={downloadDateTo}
+                    min={downloadDateFrom || undefined}
+                    onChange={(e) => setDownloadDateTo(e.target.value)}
+                    className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-400 transition-colors"
+                  />
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-zinc-400 mb-2">블록 (이미지 다운로드에만 적용, 비우면 전체)</p>
+                <select
+                  value={downloadBlock}
+                  onChange={(e) => setDownloadBlock(e.target.value)}
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-400 transition-colors"
+                >
+                  <option value="">전체 블록</option>
+                  {blocks.map((b) => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                </select>
               </div>
             </div>
             <div className="flex flex-col gap-2">
@@ -705,7 +728,7 @@ export default function MeterTable({
                 엑셀 다운로드
               </button>
               <button
-                onClick={async () => { setShowDownloadModal(false); await handleImageDownload(downloadDateFrom || undefined, downloadDateTo || undefined); }}
+                onClick={async () => { setShowDownloadModal(false); await handleImageDownload(downloadDateFrom || undefined, downloadDateTo || undefined, downloadBlock || undefined); }}
                 disabled={isImageDownloading}
                 className="flex items-center justify-center gap-2 w-full py-2.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 font-semibold text-sm rounded-lg disabled:opacity-50 transition-colors"
               >

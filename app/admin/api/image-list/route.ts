@@ -9,6 +9,7 @@ export async function GET(req: NextRequest) {
 
   const dateFrom = req.nextUrl.searchParams.get('dateFrom') ?? undefined;
   const dateTo = req.nextUrl.searchParams.get('dateTo') ?? undefined;
+  const block = req.nextUrl.searchParams.get('block') ?? undefined;
 
   const admin = createAdminClient();
   let query = admin
@@ -18,6 +19,7 @@ export async function GET(req: NextRequest) {
     .order('block', { ascending: true })
     .order('row_no', { ascending: true, nullsFirst: false });
 
+  if (block) query = query.eq('block', block);
   if (dateFrom) query = query.gte('survey_date', dateFrom);
   if (dateTo) {
     const d = new Date(dateTo);
@@ -29,11 +31,14 @@ export async function GET(req: NextRequest) {
   type Row = { id: number; block: string; row_no: string | null; image1_id: string | null; image2_id: string | null; image3_id: string | null; image4_id: string | null };
   const records = (data ?? []) as Row[];
 
+  const r2Base = process.env.NEXT_PUBLIC_R2_PUBLIC_URL?.replace(/\/$/, '') ?? '';
+
   const images = records.flatMap((r) =>
     ([r.image1_id, r.image2_id, r.image3_id, r.image4_id] as (string | null)[]).flatMap((imgId) => {
       if (!imgId) return [];
       const filename = imgId.split('/').pop() ?? imgId;
-      return [{ path: imgId, filename }];
+      // 클라이언트가 R2에서 직접 받도록 URL을 포함해 반환 (Vercel bandwidth 절약)
+      return [{ path: imgId, filename, url: r2Base ? `${r2Base}/${imgId}` : null }];
     })
   );
 
