@@ -8,18 +8,19 @@ const STORAGE_BASE = process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
 const thumbnailUrl = (path: string) => `${STORAGE_BASE}/${path}`;
 const viewUrl = (path: string) => `${STORAGE_BASE}/${path}`;
 
-const LOCATION_OPTIONS = [
-  '',
-  '건물 앞(옥내)',
-  '건물 앞(옥외)',
-  '건물 좌(옥내)',
-  '건물 좌(옥외)',
-  '건물 우(옥내)',
-  '건물 우(옥외)',
-  '건물 뒤(옥내)',
-  '건물 뒤(옥외)',
-  '기타',
-];
+const LOCATION_DETAIL_OPTIONS = ['건물앞', '건물뒤', '건물좌', '건물우', '입구좌', '입구우', '기타'];
+
+function parseLocationInit(val: string | null) {
+  if (!val) return { inOut: '' as '' | '옥내' | '옥외', detail: '', custom: '' };
+  const m = val.match(/^(옥내|옥외)\((.+)\)$/);
+  if (m) {
+    const known = LOCATION_DETAIL_OPTIONS.slice(0, -1);
+    const detail = m[2];
+    if (known.includes(detail)) return { inOut: m[1] as '옥내' | '옥외', detail, custom: '' };
+    return { inOut: m[1] as '옥내' | '옥외', detail: '기타', custom: detail };
+  }
+  return { inOut: '' as '' | '옥내' | '옥외', detail: '기타', custom: val };
+}
 
 const COVER_OPTIONS = ['', '뚜껑 파손', '뚜껑 없음', '없음'];
 const WATER_SUPPLY_OPTIONS = ['직접', '간접', '물탱크', '저수조'];
@@ -221,28 +222,20 @@ export default function MeterEditModal({ record, onClose }: Props) {
     if (USAGE_TYPES.slice(0, -1).includes(val)) return '';
     return val;
   };
-  const initLocationSelect = (val: string | null) => {
-    if (!val) return '';
-    if (LOCATION_OPTIONS.slice(0, -1).includes(val)) return val;
-    return '기타';
-  };
-  const initLocationCustom = (val: string | null) => {
-    if (!val) return '';
-    if (LOCATION_OPTIONS.slice(0, -1).includes(val)) return '';
-    return val;
-  };
+  const initLoc = parseLocationInit(record.location);
 
   const [meterSame, setMeterSame] = useState(isSameInit);
   const [isHopye, setIsHopye] = useState(record.note === '호폐');
   const [extraOpen, setExtraOpen] = useState(false);
   const [usageTypeSelect, setUsageTypeSelect] = useState(initUsageSelect(record.usage_type));
   const [usageTypeCustom, setUsageTypeCustom] = useState(initUsageCustom(record.usage_type));
-  const [locationSelect, setLocationSelect] = useState(initLocationSelect(record.location));
-  const [locationCustom, setLocationCustom] = useState(initLocationCustom(record.location));
+  const [locationInOut, setLocationInOut] = useState<'' | '옥내' | '옥외'>(initLoc.inOut);
+  const [locationDetail, setLocationDetail] = useState(initLoc.detail);
+  const [locationCustom, setLocationCustom] = useState(initLoc.custom);
   const [values, setValues] = useState<Partial<MeterInsert>>({
     meter_number: record.meter_number,
     reading: record.reading,
-    sealed: record.sealed ?? '유',
+    sealed: record.sealed ?? '봉인',
     usage_type: record.usage_type,
     floor: record.floor,
     note: record.note,
@@ -252,6 +245,7 @@ export default function MeterEditModal({ record, onClose }: Props) {
     meter_condition: record.meter_condition ?? null,
     manufacturer: record.manufacturer ?? null,
     relocation_needed: record.relocation_needed ?? null,
+    replacement_needed: record.replacement_needed ?? null,
     water_tank_capacity: record.water_tank_capacity ?? null,
     water_pressure: record.water_pressure ?? null,
     meter_type: record.meter_type ?? null,
@@ -282,8 +276,12 @@ export default function MeterEditModal({ record, onClose }: Props) {
     startTransition(async () => {
       const resolvedUsageType =
         usageTypeSelect === '기타' ? (usageTypeCustom || null) : (usageTypeSelect || null);
-      const resolvedLocation =
-        locationSelect === '기타' ? (locationCustom || null) : (locationSelect || null);
+      let resolvedLocation: string | null = null;
+      if (locationInOut && locationDetail && locationDetail !== '기타') {
+        resolvedLocation = `${locationInOut}(${locationDetail})`;
+      } else if (locationInOut && locationDetail === '기타' && locationCustom) {
+        resolvedLocation = `${locationInOut}(${locationCustom})`;
+      }
       const payload: Partial<MeterInsert> = {
         ...values,
         meter_number: meterSame ? record.old_meter_number : (values.meter_number || null),
@@ -298,6 +296,7 @@ export default function MeterEditModal({ record, onClose }: Props) {
         meter_condition: values.meter_condition || null,
         manufacturer: values.manufacturer || null,
         relocation_needed: values.relocation_needed || null,
+        replacement_needed: values.replacement_needed || null,
         water_tank_capacity: values.water_supply_type === '물탱크' ? (values.water_tank_capacity || null) : null,
         water_pressure: values.water_pressure || null,
         meter_type: values.meter_type || null,
@@ -450,9 +449,9 @@ export default function MeterEditModal({ record, onClose }: Props) {
               />
             </div>
             <div className="shrink-0">
-              <label className={labelCls}>봉인유무</label>
+              <label className={labelCls}>봉인여부</label>
               <div className="flex gap-3 h-[42px] items-center">
-                {['유', '무'].map((v) => (
+                {['봉인', '미봉인'].map((v) => (
                   <label key={v} className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="radio"
@@ -472,21 +471,52 @@ export default function MeterEditModal({ record, onClose }: Props) {
           {/* 위치 */}
           <div>
             <label className={labelCls}>위치</label>
-            <select
-              value={locationSelect}
-              onChange={(e) => {
-                setLocationSelect(e.target.value);
-                if (e.target.value !== '기타') setLocationCustom('');
-              }}
-              className={selectCls}
-            >
-              {LOCATION_OPTIONS.map((o) => (
-                <option key={o} value={o}>
-                  {o || '— 선택 —'}
-                </option>
+            {/* 1단계: 옥내/옥외 */}
+            <div className="flex gap-2 mb-2">
+              {(['옥내', '옥외'] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => { setLocationInOut(v); setLocationDetail(''); setLocationCustom(''); }}
+                  className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors ${
+                    locationInOut === v
+                      ? 'bg-emerald-400 border-emerald-400 text-zinc-950'
+                      : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  {v}
+                </button>
               ))}
-            </select>
-            {locationSelect === '기타' && (
+              {locationInOut && (
+                <button
+                  type="button"
+                  onClick={() => { setLocationInOut(''); setLocationDetail(''); setLocationCustom(''); }}
+                  className="px-3 py-2 text-xs text-zinc-600 hover:text-zinc-400 border border-zinc-800 rounded-lg transition-colors"
+                >
+                  초기화
+                </button>
+              )}
+            </div>
+            {/* 2단계: 세부 위치 */}
+            {locationInOut && (
+              <div className="flex flex-wrap gap-2">
+                {LOCATION_DETAIL_OPTIONS.map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => { setLocationDetail(v); if (v !== '기타') setLocationCustom(''); }}
+                    className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+                      locationDetail === v
+                        ? 'bg-emerald-400 border-emerald-400 text-zinc-950 font-semibold'
+                        : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+            )}
+            {locationDetail === '기타' && (
               <input
                 type="text"
                 placeholder="직접 입력"
@@ -770,9 +800,9 @@ export default function MeterEditModal({ record, onClose }: Props) {
 
                 {/* 이설필요여부 */}
                 <div>
-                  <label className={labelCls}>이설필요여부</label>
+                  <label className={labelCls}>이설여부</label>
                   <div className="flex gap-4 h-[42px] items-center">
-                    {['O', 'X'].map((v) => (
+                    {['필요', '불필요'].map((v) => (
                       <label key={v} className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="radio"
@@ -782,7 +812,7 @@ export default function MeterEditModal({ record, onClose }: Props) {
                           onChange={() => set('relocation_needed', v)}
                           className="w-4 h-4 accent-emerald-400"
                         />
-                        <span className="text-sm text-zinc-300 font-semibold">{v}</span>
+                        <span className="text-sm text-zinc-300">{v}</span>
                       </label>
                     ))}
                     {values.relocation_needed && (
@@ -808,6 +838,35 @@ export default function MeterEditModal({ record, onClose }: Props) {
                     onChange={(e) => set('water_pressure', e.target.value || null)}
                     className={inputCls}
                   />
+                </div>
+
+                {/* 교체필요 */}
+                <div>
+                  <label className={labelCls}>교체필요</label>
+                  <div className="flex gap-4 h-[42px] items-center">
+                    {['필요', '불필요'].map((v) => (
+                      <label key={v} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name={`replacement-${record.id}`}
+                          value={v}
+                          checked={values.replacement_needed === v}
+                          onChange={() => set('replacement_needed', v)}
+                          className="w-4 h-4 accent-emerald-400"
+                        />
+                        <span className="text-sm text-zinc-300">{v}</span>
+                      </label>
+                    ))}
+                    {values.replacement_needed && (
+                      <button
+                        type="button"
+                        onClick={() => set('replacement_needed', null)}
+                        className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+                      >
+                        초기화
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

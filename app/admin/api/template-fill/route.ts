@@ -49,6 +49,7 @@ const DB = {
   NOTE: "AN",
   BLOCK: "AW",
   SURVEY_DATE: "AY",
+  REPLACEMENT: "V",
 } as const;
 
 function xmlEscape(s: string): string {
@@ -344,8 +345,12 @@ export async function POST(req: NextRequest) {
           set(DB.TANK_CAP, rec.water_tank_capacity);
         } else if (rec.water_supply_type === "직접") {
           set(DB.W_DIRECT, "○");
+          set(DB.TANK_CAP, "직접급수");
         } else if (rec.water_supply_type === "간접") {
           set(DB.W_INDIRECT, "○");
+          set(DB.TANK_CAP, "직접급수");
+        } else {
+          set(DB.TANK_CAP, "직접급수");
         }
 
         set(DB.METER_TYPE, rec.meter_type);
@@ -357,6 +362,7 @@ export async function POST(req: NextRequest) {
         set(DB.USAGE_TYPE, rec.usage_type);
         set(DB.FLOOR, rec.floor);
         set(DB.NOTE, rec.note);
+        set(DB.REPLACEMENT, rec.replacement_needed);
 
         {
           const d =

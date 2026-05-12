@@ -28,6 +28,7 @@ export type MeterRecord = {
   image4_id: string | null;
   manufacturer: string | null;
   relocation_needed: string | null;
+  replacement_needed: string | null;
   water_tank_capacity: string | null;
   water_pressure: string | null;
   meter_type: string | null;
