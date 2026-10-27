@@ -34,7 +34,7 @@ export async function generate(body:z.infer<typeof pipelineSchema>) {
   if(d.sections.some(s=>s.sourceIds.some(id=>!ids.has(id))))throw new HttpError(400,'본문의 출처 표시가 실제 출처와 일치하지 않습니다.');
   const id=crypto.randomUUID();const sources=await verifySources(d.sources);
   for(const s of d.sources)existingUrls.add(s.url.replace(/\/$/,''));
-  articles.push({...d,id,slug:`brief-${id}`,issueId:body.issueId,status:'review',version:1,readMinutes:Math.max(2,Math.ceil(d.sections.map(s=>s.text).join('').length/500)),cover:d.category==='경제·금융'?'market':d.category==='세계·정세'?'globe':'chip',kicker:'새로운 관점',author:'Browinfo AI 에디터',checks:{facts:false,context:false,disclosure:false},sources,reviewNote:'',generatedBy:body.mode==='ai'?'Claude AI 초안':'RSS 자동 수집 · 편집 보완 필요',updatedAt:new Date().toISOString()});
+  articles.push({...d,id,slug:`brief-${id}`,issueId:body.issueId,status:'review',version:1,readMinutes:Math.max(2,Math.ceil(d.sections.map(s=>s.text).join('').length/500)),cover:d.category==='경제·금융'?'market':d.category==='세계·정세'?'globe':'chip',kicker:'새로운 관점',author:'Browinfo AI 에디터',checks:{facts:false,context:false,disclosure:false},sources,reviewNote:'',generatedBy:body.mode==='ai'?'ChatGPT 예약 초안':'RSS 자동 수집 · 편집 보완 필요',updatedAt:new Date().toISOString()});
  }
  const run:Run={id:crypto.randomUUID(),issueId:body.issueId,key:body.idempotencyKey,status:articles.length?'completed':'skipped',createdAt:new Date().toISOString(),articleIds:articles.map(a=>a.id),message:`${articles.length}개 초안을 검토 대기열에 저장했습니다. 자동 발행하지 않습니다.`};
  try {await persistRun(run,articles,body.issue as Issue|undefined);}catch(error){

@@ -1,0 +1,7 @@
+'use client';
+import {useState} from 'react';
+export default function OAuthConsent({authorizationId,clientName,scope}:{authorizationId:string;clientName:string;scope:string}){
+ const [busy,setBusy]=useState(false);const [error,setError]=useState('');
+ async function decide(approve:boolean){setBusy(true);try{const r=await fetch('/api/oauth/consent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({authorizationId,approve})});const d=await r.json();if(!r.ok)throw new Error(d.error);window.location.assign(d.redirectUrl);}catch(e){setError((e as Error).message);setBusy(false);}}
+ return <main className="container" style={{maxWidth:620,paddingTop:65}}><a className="logo" href="/">browinfo<span>.</span></a><h1 style={{fontSize:28,margin:'30px 0 18px'}}>ChatGPT 초안 연결 승인</h1><p style={{lineHeight:2}}>연결 앱: <strong>{clientName}</strong></p><p style={{lineHeight:2}}>이 연결은 주간 작성 맥락 읽기, 새 초안 저장, 저장 결과 확인만 허용합니다. 발행·기존 글 수정·조회수 통계·관리자 계정 설정 권한은 제공하지 않습니다.</p><p style={{lineHeight:2,marginTop:16}}>로그인 정보 범위: {scope}</p><p style={{lineHeight:2}}>계속하면 예약 작업이 새 초안을 검토 대기열에 추가할 수 있습니다. 연결 해제는 Supabase OAuth 앱의 승인 철회 또는 CHATGPT_DRAFTS_ENABLED=false로 가능합니다.</p>{error&&<p role="alert">{error}</p>}<div style={{display:'flex',gap:14,marginTop:25}}><button disabled={busy} className="button primary" onClick={()=>decide(true)}>초안 저장 연결 승인</button><button disabled={busy} className="button" onClick={()=>decide(false)}>거절</button></div></main>;
+}

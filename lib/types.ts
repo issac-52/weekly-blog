@@ -15,4 +15,4 @@ export type Article = {
 export type Issue = { id: string; number: string; title: string; subtitle: string; start: string; end: string; label: string };
 export type Run = { id: string; issueId: string; key: string; status: string; createdAt: string; articleIds: string[]; message: string };
 export type ReviewEvent = { id: string; articleId: string; action: string; note: string; actor: string; createdAt: string };
-export type State = { issues: Issue[]; articles: Article[]; runs: Run[]; events: ReviewEvent[]; bookmarks: string[]; storage: string; isAdmin?: boolean; isPrivate?: boolean };
+export type State = { issues: Issue[]; articles: Article[]; runs: Run[]; events: ReviewEvent[]; bookmarks: string[]; storage: string; isAdmin?: boolean; isPrivate?: boolean; analyticsEnabled?: boolean };
