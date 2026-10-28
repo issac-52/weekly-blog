@@ -1,48 +1,41 @@
 {
-  "name": "booup-tmp",
-  "version": "0.1.0",
+  "name": "browinfo-weekly-magazine",
+  "version": "2.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test tests/*.test.mjs",
+    "import:content": "node scripts/import-content.mjs",
+    "seed": "node --experimental-strip-types scripts/seed.mts",
+    "test:routes": "node tests/route-guards.mjs"
+  },
+  "engines": {
+    "node": ">=22.13.0"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1037.0",
-    "@aws-sdk/s3-request-presigner": "^3.1037.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.104.0",
-    "@tailwindcss/typography": "^0.5.19",
-    "@tiptap/extension-color": "^3.22.4",
-    "@tiptap/extension-image": "^3.22.4",
-    "@tiptap/extension-link": "^3.22.4",
-    "@tiptap/extension-placeholder": "^3.22.4",
-    "@tiptap/extension-text-align": "^3.22.4",
-    "@tiptap/extension-text-style": "^3.22.4",
-    "@tiptap/extension-underline": "^3.22.4",
-    "@tiptap/pm": "^3.22.4",
-    "@tiptap/react": "^3.22.4",
-    "@tiptap/starter-kit": "^3.22.4",
-    "exceljs": "^4.4.0",
-    "fflate": "^0.8.2",
-    "gray-matter": "^4.0.3",
-    "jszip": "^3.10.1",
-    "lucide-react": "^1.8.0",
-    "next": "16.2.4",
-    "next-mdx-remote": "^6.0.0",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "xlsx": "^0.18.5"
+    "jose": "^6.2.13",
+    "lucide-react": "1.31.0",
+    "next": "16.3.4",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "server-only": "0.0.1",
+    "zod": "3.25.76"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.4",
-    "tailwindcss": "^4",
-    "typescript": "^5"
-  }
+    "@electric-sql/pglite": "^0.5.11",
+    "@tailwindcss/postcss": "4.2.1",
+    "@types/node": "22.19.19",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "tailwindcss": "4.2.1",
+    "typescript": "5.9.3"
+  },
+  "type": "module",
+  "packageManager": "pnpm@11.25.0"
 }
