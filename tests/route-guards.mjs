@@ -8,9 +8,9 @@ const auth={Authorization:`Basic ${Buffer.from(`preview:${password}`).toString('
 try{
  let ready=false;for(let n=0;n<150;n++){try{if((await fetch(base,{redirect:'manual'})).status===401){ready=true;break;}}catch{}await new Promise(r=>setTimeout(r,100));}assert.equal(ready,true,logs);
  assert.equal((await fetch(base)).status,401);assert.equal((await fetch(base,{headers:{Authorization:'Basic bad'}})).status,401);
- assert.equal((await fetch(`${base}/admin`,{headers:auth,redirect:'manual'})).status,307);
- for(const path of ['/api/articles','/api/bookmarks','/api/pipeline','/api/oauth/consent']){const r=await fetch(base+path,{method:'POST',headers:{...auth,'Content-Type':'application/json'},body:'{}'});assert.equal(r.status,401,path);}
- for(const path of ['/api/export','/api/pipeline','/api/admin/analytics'])assert.equal((await fetch(base+path,{headers:auth})).status,401,path);
+ for(const path of ['/admin','/admin/sources'])assert.equal((await fetch(base+path,{headers:auth,redirect:'manual'})).status,307);
+ for(const path of ['/api/articles','/api/bookmarks','/api/pipeline','/api/oauth/consent','/api/admin/sources']){const r=await fetch(base+path,{method:'POST',headers:{...auth,'Content-Type':'application/json'},body:'{}'});assert.equal(r.status,401,path);}
+ for(const path of ['/api/export','/api/pipeline','/api/admin/analytics','/api/admin/sources'])assert.equal((await fetch(base+path,{headers:auth})).status,401,path);
  for(const path of ['/mcp','/api/ingest']){const r=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});assert.equal(r.status,401,path);assert.match(r.headers.get('www-authenticate'),/oauth-protected-resource/);}
  const metadata=await fetch(`${base}/.well-known/oauth-protected-resource`);assert.equal(metadata.status,200);assert.equal((await metadata.json()).resource,'https://browinfo.example/mcp');
  const analytics=await fetch(`${base}/api/analytics/pageview`,{method:'POST',headers:{...auth,'Content-Type':'application/json'},body:'{}'});assert.equal(analytics.status,202);assert.equal((await analytics.json()).recorded,false);

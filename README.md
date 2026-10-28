@@ -7,6 +7,8 @@
 - 확대된 본문(PC 19px / 모바일 17px), 사건·배경·의미를 설명하는 요약
 - 주간 호 / 카테고리 / 검색 / 기사 / 관리자용 저장 목록
 - 출처 검사 / 수정 / 검토 / 승인 / 발행 / 반려 / 버전 충돌 방지 / 이력
+- 관리자 출처 도메인 추가·수정·비활성화, 신문·전문 매체 지원, 자동 접근 검사와 수동 원문 확인 분리
+- 인용·이미지·이용 조건 편집 확인과 비공개 변경 이력
 - Supabase Auth + 명시적인 관리자 이메일 허용 목록
 - 독자 API의 발행본 전용 조회, 모든 쓰기·내보내기 API의 관리자 인증
 - 기본 비공개 접근 보호. `SITE_VISIBILITY=public` 전에는 접근 비밀번호 필요
@@ -19,7 +21,7 @@ Sites/Vinext/Cloudflare D1/ChatGPT 인증 의존성은 없습니다. 원본의 �
 ## 가장 먼저 할 일
 
 1. 새 작업 브랜치에서 변경안을 적용합니다. [START_HERE.md](START_HERE.md)를 먼저 읽어주세요.
-2. 새 Browinfo 전용 Supabase에 migration 3개를 순서대로 적용합니다.
+2. 새 Browinfo 전용 Supabase에 migration 4개를 순서대로 적용합니다.
 3. `.env.example`을 `.env.local`로 복사하고 **새 프로젝트 값만** 설정합니다.
 4. Node 22.13 이상에서 의존성을 설치합니다. 제공한 `pnpm-lock.yaml`을 사용합니다.
 
@@ -66,3 +68,5 @@ corepack pnpm run test:routes
 ```
 
 실행 결과와 제한은 [VALIDATION.md](docs/VALIDATION.md), 운영 이전 순서는 [DEPLOYMENT.md](docs/DEPLOYMENT.md)에 있습니다. 실제 Supabase Auth 로그인, OAuth 연결과 ChatGPT 예약은 새 프로젝트와 배포 주소를 연결한 뒤 추가 검증해야 합니다.
+
+출처 관리 v2.2 적용·편집 절차는 [SOURCE_MANAGEMENT.md](docs/SOURCE_MANAGEMENT.md)를 참고하세요. 도메인 등록은 해당 매체 콘텐츠의 이용 허락을 뜻하지 않습니다.
