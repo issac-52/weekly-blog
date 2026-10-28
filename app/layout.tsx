@@ -19,8 +19,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <Analytics />
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">{children}
+        <Analytics />
+      </body>
     </html>
   );
 }
