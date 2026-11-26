@@ -1,6 +1,6 @@
-# Vercel 및 새 Supabase 이전 절차
+# 배포 절차 (Vercel + Supabase)
 
-기존 GitHub·Vercel·Supabase·DNS는 이번 수정에서 변경하지 않았습니다. 연결된 저장소에 push하면 자동 배포될 수 있으므로 새 브랜치와 별도 검증 프로젝트를 사용합니다. 외부 설정·배포는 승인 후 진행합니다.
+새 Browinfo 전용 Supabase와 Vercel 프로젝트에 배포하는 절차입니다. 연결된 저장소에 push하면 자동 배포될 수 있으므로, 외부 설정 변경과 공개 전환은 승인 후 진행합니다.
 
 1. 새 Browinfo 전용 Supabase를 준비합니다. 기존 공유 DB에는 적용하지 않습니다.
 2. `supabase/migrations/`의 001, 002, 003, 004을 순서대로 적용합니다. 001은 콘텐츠/RLS/RPC, 002는 이전 버전의 작업 lease 이력(현재 생성 코드에서 미사용), 003은 비공개 통계/RPC, 004는 출처 관리·변경 이력/RPC입니다. 이전에 적용한 migration은 재실행하지 않고 미적용 migration만 추가합니다. 이미 v2.1이면 004만 적용합니다.
