@@ -14,3 +14,11 @@ test('only a fully reviewed, approved version can publish',()=>{
 test('unresolved citation IDs block approval even with all editor checks',()=>{
  const a=structuredClone(seedArticles[0]);a.status='review';a.checks.rights=true;a.sections[0].sourceIds=['missing'];assert.equal(canTransition(a,'approve'),false);
 });
+test('auto-publish readiness uses only automated checks, not editor checks',async()=>{
+ const {autoPublishReady}=await import('../lib/quality.ts');
+ const a=structuredClone(seedArticles[0]);a.status='review';a.checks={facts:false,context:false,disclosure:false,rights:false};
+ for(const s of a.sources){s.reachable=true;s.policyAllowed=true;}
+ assert.equal(autoPublishReady(a).ready,true);
+ a.sources[0].reachable=false;assert.equal(autoPublishReady(a).ready,false);assert.deepEqual(autoPublishReady(a).failed,['출처 접근 또는 수동 원문 확인']);
+ a.sources[0].reachable=true;a.sections[0].sourceIds=['missing'];assert.equal(autoPublishReady(a).ready,false);
+});

@@ -1,9 +1,10 @@
 # Browinfo (weekly-blog)
 
-주간 기사 초안을 받아 출처를 확인하고, 관리자가 승인한 글만 발행하는 매거진입니다. Next.js 16(React 19), Supabase, Vercel로 만들었습니다.
+주간 기사 초안을 받아 출처를 확인하고 발행하는 매거진입니다. [browinfo.com](https://www.browinfo.com/)에 공개 운영 중이며, Next.js 16(React 19), Supabase, Vercel로 만들었습니다.
 
 ```
-ChatGPT 작성 → OAuth 초안 전용 MCP/API → 출처 검사 → 검토 대기 → 관리자 승인 → 발행
+ChatGPT 작성 → OAuth 초안 전용 MCP/API → 출처 검사 → 자동 검사 통과 시 발행 (AUTO_PUBLISH_AI_DRAFTS=true)
+                                                     → 그 외: 검토 대기 → 관리자 승인 → 발행
 ```
 
 ## 기능
@@ -13,17 +14,17 @@ ChatGPT 작성 → OAuth 초안 전용 MCP/API → 출처 검사 → 검토 대�
 - 출처 도메인 관리(추가·수정·비활성화), 자동 접근 검사와 사람의 원문 확인 분리
 - 인용·이미지·이용 조건 확인과 비공개 변경 이력
 - Supabase Auth + 관리자 이메일 허용 목록. 독자 API는 발행본만 조회하고 모든 쓰기·내보내기 API는 관리자 인증 필요
-- 기본 비공개(`SITE_VISIBILITY=private`). 공개 전에는 Basic Auth 접근 비밀번호 필요
+- `SITE_VISIBILITY=private`이면 Basic Auth 접근 비밀번호 필요 (운영은 public)
 - 주간 실행 키로 같은 주 초안의 중복 제출 방지
 - 관리자 통계: 조회수, 방문 브라우저 수, 7/30일 추이, 인기 글 (비공개 상태와 관리자 방문은 집계하지 않음)
 
-사이트는 LLM API를 직접 호출하지 않습니다. 글은 ChatGPT에서 작성하고, 연결 도구는 초안 생성만 할 수 있으며 승인·발행 권한이 없습니다.
+사이트는 LLM API를 직접 호출하지 않습니다. 글은 ChatGPT에서 작성하고, 연결 도구에는 승인·발행 도구가 없습니다. `AUTO_PUBLISH_AI_DRAFTS=true`이면 제출한 초안 중 자동 검사를 통과한 글만 바로 발행됩니다([자동 발행](docs/CHATGPT_CONNECTION.md#자동-발행)).
 
 ## 로컬 실행
 
 Node.js 22.13 이상과 pnpm(corepack)을 사용합니다.
 
-1. Browinfo 전용 Supabase 프로젝트에 `supabase/migrations/`의 SQL 4개를 순서대로 적용합니다.
+1. Browinfo 전용 Supabase 프로젝트에 `supabase/migrations/`의 SQL 5개를 순서대로 적용합니다.
 2. `.env.example`을 `.env.local`로 복사하고 같은 Supabase 프로젝트 값만 설정합니다. `service_role`과 접근 비밀번호는 서버 전용입니다.
 3. Supabase Dashboard에서 관리자 사용자를 만들고 그 이메일을 `ADMIN_EMAILS`에 등록합니다. 기본 계정은 없습니다([관리자 로그인](docs/ADMIN_LOGIN.md)).
 

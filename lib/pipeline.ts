@@ -5,9 +5,17 @@ import type { Article,Issue,Run } from './types';
 import { HttpError } from './http';
 import {loadSourceDomains} from './source-registry';
 import {sourceAllowed} from './source-policy.mjs';
+import {autoPublishReady} from './quality';
+/** AI drafts that pass the automated checks are published immediately when this is enabled. */
+export const autoPublishEnabled=()=>process.env.AUTO_PUBLISH_AI_DRAFTS==='true';
 const source=z.object({id:z.string().min(1).max(30),title:z.string().min(3).max(300),publisher:z.string().min(2).max(80),url:z.string().url().refine(safeSourceUrl),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/)});
 const draft=z.object({title:z.string().min(5).max(160),description:z.string().min(30).max(600),category:z.enum(['경제·금융','세계·정세','IT·AI','라이프·트렌드']),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),takeaways:z.array(z.string().min(5).max(500)).min(2).max(6),sections:z.array(z.object({heading:z.string().min(2).max(150),text:z.string().min(40).max(10000),sourceIds:z.array(z.string()).min(1).max(10),kind:z.enum(['fact','analysis'])})).min(2).max(10),sources:z.array(source).min(1).max(8)});
 export const pipelineSchema=z.object({mode:z.enum(['collect','ai']).default('ai'),idempotencyKey:z.string().min(8).max(120).regex(/^[a-zA-Z0-9:_-]+$/),issueId:z.string().regex(/^\d{4}-W\d{2}$/),issue:z.object({id:z.string(),number:z.string().max(10),title:z.string().min(5).max(150),subtitle:z.string().max(500),start:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),end:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),label:z.string().max(50)}).optional(),articles:z.array(draft).min(1).max(5).optional()});
+function runMessage(articles:Article[]){
+ const published=articles.filter(a=>a.status==='published').length;const review=articles.length-published;
+ if(!published)return `${articles.length}개 초안을 검토 대기열에 저장했습니다.`;
+ return `${published}개를 자동 발행했습니다.${review?` ${review}개는 자동 검사를 통과하지 못해 검토 대기열에 저장했습니다.`:''}`;
+}
 export async function generate(body:z.infer<typeof pipelineSchema>) {
  const state=await loadState();const prior=state.runs.find(r=>r.key===body.idempotencyKey);
  if(prior)return {run:prior,replayed:true};
@@ -41,9 +49,15 @@ export async function generate(body:z.infer<typeof pipelineSchema>) {
   if(d.sections.some(s=>s.sourceIds.some(id=>!ids.has(id))))throw new HttpError(400,'본문의 출처 표시가 실제 출처와 일치하지 않습니다.');
   const id=crypto.randomUUID();const sources=await verifySources(d.sources,rules);
   for(const s of d.sources)existingUrls.add(s.url.replace(/\/$/,''));
-  articles.push({...d,id,slug:`brief-${id}`,issueId:body.issueId,status:'review',version:1,readMinutes:Math.max(2,Math.ceil(d.sections.map(s=>s.text).join('').length/500)),cover:d.category==='경제·금융'?'market':d.category==='세계·정세'?'globe':'chip',kicker:'새로운 관점',author:'Browinfo AI 에디터',checks:{facts:false,context:false,disclosure:false,rights:false},sources,reviewNote:'',generatedBy:body.mode==='ai'?'ChatGPT 예약 초안':'RSS 자동 수집 · 편집 보완 필요',updatedAt:new Date().toISOString()});
+  const article:Article={...d,id,slug:`brief-${id}`,issueId:body.issueId,status:'review',version:1,readMinutes:Math.max(2,Math.ceil(d.sections.map(s=>s.text).join('').length/500)),cover:d.category==='경제·금융'?'market':d.category==='세계·정세'?'globe':'chip',kicker:'새로운 관점',author:'Browinfo AI 에디터',checks:{facts:false,context:false,disclosure:false,rights:false},sources,reviewNote:'',generatedBy:body.mode==='ai'?'ChatGPT 예약 초안':'RSS 자동 수집 · 편집 보완 필요',updatedAt:new Date().toISOString()};
+  if(body.mode==='ai'&&autoPublishEnabled()){
+   const check=autoPublishReady(article);
+   if(check.ready){article.status='published';article.reviewNote='자동 검사(출처 접근·문단 근거·완성도)를 통과해 자동 발행했습니다.';}
+   else article.reviewNote=`자동 발행 보류: ${check.failed.join(', ')}`;
+  }
+  articles.push(article);
  }
- const run:Run={id:crypto.randomUUID(),issueId:body.issueId,key:body.idempotencyKey,status:articles.length?'completed':'skipped',createdAt:new Date().toISOString(),articleIds:articles.map(a=>a.id),message:`${articles.length}개 초안을 검토 대기열에 저장했습니다. 자동 발행하지 않습니다.`};
+ const run:Run={id:crypto.randomUUID(),issueId:body.issueId,key:body.idempotencyKey,status:articles.length?'completed':'skipped',createdAt:new Date().toISOString(),articleIds:articles.map(a=>a.id),message:runMessage(articles)};
  try {await persistRun(run,articles,body.issue as Issue|undefined);}catch(error){
   const duplicate=(await loadState()).runs.find(r=>r.key===body.idempotencyKey);if(duplicate)return {run:duplicate,replayed:true};throw error;
  }

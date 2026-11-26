@@ -34,3 +34,15 @@ test('Postgres migrations, RLS, atomic review, ingest rollback, and job leases',
   assert.equal((await db.query('SELECT browinfo_claim_job($1,$2) AS ok',['job','owner-c'])).rows[0].ok,false);
  }finally{await db.close();}
 });
+
+test('auto-publish ingest stores published drafts as published and anything else as review',async()=>{
+ const db=new PGlite();
+ try{
+  await db.exec('CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;');
+  for(const file of ['202610260001_browinfo_magazine.sql','202610270002_generation_jobs.sql','202611260005_auto_publish_ingest.sql'])await db.exec(await readFile(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8'));
+  const drafts=[{id:'p1',slug:'pub',issueId:'week',status:'published'},{id:'r1',slug:'rev',issueId:'week',status:'review'},{id:'x1',slug:'odd',issueId:'week',status:'approved'}];
+  await db.query('SELECT browinfo_ingest_run($1,$2,$3)',[JSON.stringify({id:'run',key:'auto-run',issueId:'week'}),JSON.stringify(drafts),JSON.stringify({id:'week'})]);
+  const rows=(await db.query('SELECT id,status FROM browinfo_articles ORDER BY id')).rows;
+  assert.deepEqual(rows,[{id:'p1',status:'published'},{id:'r1',status:'review'},{id:'x1',status:'review'}]);
+ }finally{await db.close();}
+});
