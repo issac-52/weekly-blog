@@ -18,3 +18,9 @@ export function canTransition(article: Article, action: string) {
   if (action === "changes" || action === "reject") return article.status !== "rejected";
   return false;
 }
+
+/** Checks that need no human: source access, per-section citations, and length. Used to auto-publish AI drafts. */
+export function autoPublishReady(article: Article) {
+  const automated = evaluateQuality(article).checks.slice(0, 3);
+  return { ready: automated.every(c => c.ok), failed: automated.filter(c => !c.ok).map(c => c.label) };
+}

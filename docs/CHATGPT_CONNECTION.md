@@ -12,7 +12,7 @@
 - `submit_drafts`: 기사와 출처를 검토 대기로만 저장. 구조·분량·출처 검사, 동일 실행 키 재시도 보호.
 - `get_submission_status`: 제출한 실행의 저장·검토 상태와 출처 검사 결과 확인.
 
-승인·발행·기존 기사 수정·DB 관리·통계·사용자 설정 도구는 없습니다. 서버가 고정한 Supabase 프로젝트 JWKS로 JWT 서명, 발급자, `/mcp` audience, 만료, 관리자 UUID, 전용 OAuth client_id, `browinfo_scope=drafts:write`를 확인합니다. Supabase service_role 키는 서버 안에만 둡니다. 같은 OAuth 토큰을 관리자 API에 보내도 관리자 쿠키 세션을 대신하지 않습니다.
+승인·발행·기존 기사 수정·DB 관리·통계·사용자 설정 도구는 없습니다. 단, `AUTO_PUBLISH_AI_DRAFTS=true`이면 `submit_drafts`로 제출한 초안 중 자동 검사를 통과한 글은 바로 발행됩니다(아래 자동 발행 참고). 서버가 고정한 Supabase 프로젝트 JWKS로 JWT 서명, 발급자, `/mcp` audience, 만료, 관리자 UUID, 전용 OAuth client_id, `browinfo_scope=drafts:write`를 확인합니다. Supabase service_role 키는 서버 안에만 둡니다. 같은 OAuth 토큰을 관리자 API에 보내도 관리자 쿠키 세션을 대신하지 않습니다.
 
 ## 배포 후 1회 설정 (외부 변경은 승인 후)
 
@@ -29,7 +29,7 @@
 
 ## 예약 프롬프트 예시
 
-매주 월요일 오전 9시(한국 시간), 지난 ISO 주의 공식 자료를 직접 조사해 Browinfo 주간 초안을 최대 4개 작성해줘. 연결된 Browinfo 도구의 get_draft_context를 먼저 읽고 같은 주의 실행 키와 출처를 중복하지 마. 요약은 사건·배경·의미를 완결된 3문장 이상으로 설명하고 본문은 배경/용어/변화/독자 영향/한계를 4~6개 소제목, 약 1200~2000자로 작성해. 사실과 해설을 구분하고 문단별 출처를 남겨줘. submit_drafts의 mode는 ai, idempotencyKey는 weekly-ai:YYYY-Www로 해. 새 주간 호는 메타데이터를 포함해. 저장 뒤 get_submission_status로 review 상태와 출처 검사 결과를 확인하고 초안 수·실패 사유를 알려줘. 승인·발행·기존 글 수정·외부 설정 변경은 하지 마. 연결이 끊겼으면 보호를 낮추지 말고 실패로 알려줘.
+매주 월요일 오전 9시(한국 시간), 지난 ISO 주의 공식 자료를 직접 조사해 Browinfo 주간 초안을 최대 4개 작성해줘. 연결된 Browinfo 도구의 get_draft_context를 먼저 읽고 같은 주의 실행 키와 출처를 중복하지 마. 요약은 사건·배경·의미를 완결된 3문장 이상으로 설명하고 본문은 배경/용어/변화/독자 영향/한계를 4~6개 소제목, 약 1200~2000자로 작성해. 사실과 해설을 구분하고 문단별 출처를 남겨줘. submit_drafts의 mode는 ai, idempotencyKey는 weekly-ai:YYYY-Www로 해. 새 주간 호는 메타데이터를 포함해. 저장 뒤 get_submission_status로 발행·검토 대기 상태와 출처 검사 결과를 확인하고 발행 수·보류 사유를 알려줘. 기존 글 수정·외부 설정 변경은 하지 마. 연결이 끊겼으면 보호를 낮추지 말고 실패로 알려줘.
 
 ## 호환/수동 API
 
@@ -42,3 +42,18 @@
 - https://learn.chatgpt.com/docs/automations
 - https://supabase.com/docs/guides/auth/oauth-server/getting-started
 - https://supabase.com/docs/guides/auth/oauth-server/token-security
+
+## 자동 발행
+
+`AUTO_PUBLISH_AI_DRAFTS=true`이면 ChatGPT가 제출한 초안을 사람의 검토 없이 처리합니다.
+
+- 자동 검사 세 가지(출처 접근, 문단별 근거 표시, 요약·본문 분량)를 모두 통과하면 `published`로 저장되어 공개 사이트에 바로 나옵니다.
+- 하나라도 통과하지 못하면 지금처럼 `review`로 저장되고, `reviewNote`에 보류 사유가 남습니다.
+- 편집자 확인 항목(사실·맥락·AI 고지·이용 조건)은 자동 발행 글에서 확인하지 않은 상태(false)로 남습니다.
+- 발행된 글을 내리려면 관리 화면에서 반려합니다.
+
+켜는 순서:
+
+1. Supabase SQL Editor에서 `supabase/migrations/202611260005_auto_publish_ingest.sql`을 적용합니다. 적용 전에 켜면 DB에는 `review`로 저장되어 공개되지 않습니다.
+2. Vercel 환경변수에 `AUTO_PUBLISH_AI_DRAFTS=true`를 추가하고 재배포합니다.
+3. 테스트 초안 하나를 제출해 공개 페이지에 나오는지 확인합니다.

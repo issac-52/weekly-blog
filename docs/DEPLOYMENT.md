@@ -3,7 +3,7 @@
 새 Browinfo 전용 Supabase와 Vercel 프로젝트에 배포하는 절차입니다. 연결된 저장소에 push하면 자동 배포될 수 있으므로, 외부 설정 변경과 공개 전환은 승인 후 진행합니다.
 
 1. 새 Browinfo 전용 Supabase를 준비합니다. 기존 공유 DB에는 적용하지 않습니다.
-2. `supabase/migrations/`의 001, 002, 003, 004을 순서대로 적용합니다. 001은 콘텐츠/RLS/RPC, 002는 이전 버전의 작업 lease 이력(현재 생성 코드에서 미사용), 003은 비공개 통계/RPC, 004는 출처 관리·변경 이력/RPC입니다. 이전에 적용한 migration은 재실행하지 않고 미적용 migration만 추가합니다. 이미 v2.1이면 004만 적용합니다.
+2. `supabase/migrations/`의 001~005를 순서대로 적용합니다. 001은 콘텐츠/RLS/RPC, 002는 이전 버전의 작업 lease 이력(현재 생성 코드에서 미사용), 003은 비공개 통계/RPC, 004는 출처 관리·변경 이력/RPC입니다. 005는 자동 발행 초안을 `published`로 저장하게 하는 초안 수신 함수 변경입니다. 이전에 적용한 migration은 재실행하지 않고 미적용 migration만 추가합니다. 이미 v2.1이면 004만 적용합니다.
 3. `.env.example`을 `.env.local`로 복사합니다. Supabase URL·publishable key·service_role·EXPECTED_SUPABASE_PROJECT_REF는 같은 새 프로젝트 값이어야 합니다. service_role과 접근 비밀번호는 서버 전용입니다.
 4. SITE_VISIBILITY=private와 16자 이상 PREVIEW_ACCESS_PASSWORD를 유지합니다. 외곽 Basic Auth의 사용자명은 preview입니다. 이 비밀번호는 관리자 계정 비밀번호와 다릅니다.
 5. [관리자 로그인](ADMIN_LOGIN.md)대로 Supabase 사용자를 만들고 ADMIN_EMAILS를 설정합니다. 별도의 기본 계정은 없습니다.
