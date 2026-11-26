@@ -1,2 +1,4 @@
+import {connection} from 'next/server';
 import Magazine from '@/components/magazine/Magazine';
-export default function Page(){return <Magazine/>;}
+import {initialPublicState} from '@/lib/published';
+export default async function Page(){await connection();return <Magazine initialState={await initialPublicState()}/>;}

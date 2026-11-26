@@ -6,6 +6,7 @@ import { HttpError } from './http';
 import {loadSourceDomains} from './source-registry';
 import {sourceAllowed} from './source-policy.mjs';
 import {autoPublishReady} from './quality';
+import {invalidatePublished} from './published';
 /** AI drafts that pass the automated checks are published immediately when this is enabled. */
 export const autoPublishEnabled=()=>process.env.AUTO_PUBLISH_AI_DRAFTS==='true';
 const source=z.object({id:z.string().min(1).max(30),title:z.string().min(3).max(300),publisher:z.string().min(2).max(80),url:z.string().url().refine(safeSourceUrl),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/)});
@@ -61,5 +62,6 @@ export async function generate(body:z.infer<typeof pipelineSchema>) {
  try {await persistRun(run,articles,body.issue as Issue|undefined);}catch(error){
   const duplicate=(await loadState()).runs.find(r=>r.key===body.idempotencyKey);if(duplicate)return {run:duplicate,replayed:true};throw error;
  }
+ if(articles.some(a=>a.status==='published'))invalidatePublished();
  return {run,replayed:false};
 }
