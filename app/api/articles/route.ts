@@ -2,6 +2,7 @@ import {requireAdmin} from '@/lib/auth';
 import { z } from 'zod';
 import { loadState,saveArticle } from '@/lib/store';
 import { canTransition } from '@/lib/quality';
+import {invalidatePublished} from '@/lib/published';
 import { verifySources,applySourcePolicy } from '@/lib/sources';
 import {loadSourceDomains} from '@/lib/source-registry';
 import { failure,guardMutation,HttpError,input } from '@/lib/http';
@@ -39,5 +40,6 @@ export async function POST(request:Request){try{
  next.version=current.version+1;next.updatedAt=new Date().toISOString();
 
  await saveArticle(next,current.version,{id:eventId,articleId:next.id,action:body.action,note:body.action==='reviewSource'?`출처 ${body.sourceReview!.sourceId} · ${body.sourceReview!.confirmed?'수동 확인':'수동 확인 해제'} · ${body.sourceReview!.note}`:body.note||next.reviewNote||'',actor:user?.displayName||'비공개 사이트 관리자',createdAt:next.updatedAt});
+ invalidatePublished();
  return Response.json({article:next});
 }catch(e){return failure(e);}}

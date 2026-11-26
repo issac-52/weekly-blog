@@ -22,8 +22,9 @@ export async function loadState():Promise<State>{
  return {issues:decode<Issue>(i).sort((a,b)=>b.start.localeCompare(a.start)),articles:decode<Article>(a).sort((a,b)=>b.date.localeCompare(a.date)),runs:decode<Run>(r).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)),events:decode<ReviewEvent>(e).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)),bookmarks:b.map(x=>String(x.article_id)),storage:storageName()};
 }
 export async function loadPublishedState():Promise<State>{
- const articles=decode<Article>(await rows(names.articles,'&status=eq.published')).filter(a=>a.status==='published').sort((a,b)=>b.date.localeCompare(a.date));
- const issues=decode<Issue>(await rows(names.issues)).filter(i=>articles.some(a=>a.issueId===i.id)).sort((a,b)=>b.start.localeCompare(a.start));
+ const [articleRows,issueRows]=await Promise.all([rows(names.articles,'&status=eq.published'),rows(names.issues)]);
+ const articles=decode<Article>(articleRows).filter(a=>a.status==='published').sort((a,b)=>b.date.localeCompare(a.date));
+ const issues=decode<Issue>(issueRows).filter(i=>articles.some(a=>a.issueId===i.id)).sort((a,b)=>b.start.localeCompare(a.start));
  return {issues,articles,runs:[],events:[],bookmarks:[],storage:'발행한 기사'};
 }
 export async function saveArticle(a:Article,expectedVersion:number,event:ReviewEvent){

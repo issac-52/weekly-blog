@@ -12,8 +12,8 @@ const statusLabel:Record<string,string>={review:'검토 대기',changes:'수정 
 const actionLabel:Record<string,string>={save:'내용·검토 저장',verify:'출처 재검사',approve:'승인',publish:'매거진 발행',changes:'수정 요청',reject:'반려',reviewSource:'수동 원문 확인'};
 const date=(value:string)=>value.replaceAll('-','.');
 const timestamp=(value:string)=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(value)).replaceAll('-','.');
-export default function Magazine({mode='home',slug}:{mode?:Mode;slug?:string}){
- const [state,setState]=useState<State|null>(null);const [error,setError]=useState('');const [busy,setBusy]=useState(false);const [toast,setToast]=useState('');
+export default function Magazine({mode='home',slug,initialState=null}:{mode?:Mode;slug?:string;initialState?:State|null}){
+ const [state,setState]=useState<State|null>(initialState);const [error,setError]=useState('');const [busy,setBusy]=useState(false);const [toast,setToast]=useState('');
  const [jobError,setJobError]=useState(''); const [query,setQuery]=useState('');const [category,setCategory]=useState('전체');const [issueId,setIssueId]=useState('');const [selected,setSelected]=useState<Article|null>(null);const [filter,setFilter]=useState('all');const [note,setNote]=useState('');
  const load=useCallback(async()=>{try{const r=await fetch('/api/state',{cache:'no-store'});const d=await r.json() as State & {error?:string};if(!r.ok)throw new Error(d.error);setState(d);setError('');return d as State;}catch(e){setError(e instanceof Error?e.message:'불러오지 못했습니다.');}},[]);
  useEffect(()=>{load();},[load]);
